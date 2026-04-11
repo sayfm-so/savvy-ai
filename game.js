@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Savvy AI World — Retro Pixel Office
+// Savvy AI — Retro Pixel Office
 // Static build — no backend — GitHub Pages ready
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -351,7 +351,7 @@ class WorldScene extends Phaser.Scene {
     panel.lineBetween(0, 30, 220, 30);
 
     // Title
-    this.add.text(10, 8, '> SAVVY AI WORLD', {
+    this.add.text(10, 8, '> SAVVY AI', {
       fontFamily: 'Courier New', fontSize: '12px', color: '#0088ff',
     });
 
