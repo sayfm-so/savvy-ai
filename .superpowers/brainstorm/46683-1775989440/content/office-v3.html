@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Office v3</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#050510;font-family:'Courier New',monospace;padding:12px;}
+h2{color:#00ffcc;text-align:center;letter-spacing:3px;font-size:14px;margin-bottom:12px;}
+#wrap{position:relative;width:860px;height:540px;margin:0 auto;overflow:hidden;background:#0a0a16;border:1px solid #1a2a4a;}
+
+/* grid overlay */
+#wrap::before{content:'';position:absolute;inset:0;
+  background-image:linear-gradient(rgba(28,28,44,0.4) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(28,28,44,0.4) 1px,transparent 1px);
+  background-size:16px 16px;pointer-events:none;z-index:0;}
+
+/* scanlines */
+#wrap::after{content:'';position:absolute;inset:0;
+  background-image:repeating-linear-gradient(transparent,transparent 2px,rgba(0,0,0,0.04) 2px,rgba(0,0,0,0.04) 3px);
+  pointer-events:none;z-index:999;}
+
+/* rooms */
+.room{position:absolute;border:1.5px solid rgba(0,80,255,0.4);z-index:1;}
+.room-label{position:absolute;top:5px;left:7px;font-size:9px;letter-spacing:2px;opacity:0.85;font-weight:bold;}
+
+/* desks */
+.desk{position:absolute;z-index:3;}
+.desk-body{width:54px;height:30px;background:#1a1a2e;border:1px solid #2a2a4e;position:relative;}
+.monitor{position:absolute;background:#0d0d1a;border:1px solid #222244;}
+.mon1{left:3px;top:2px;width:18px;height:13px;}
+.mon2{left:25px;top:2px;width:13px;height:10px;}
+.screen-lines{position:absolute;inset:2px;display:flex;flex-direction:column;gap:2px;}
+.sl{height:2px;border-radius:1px;transition:width 2s ease;}
+.keyboard{position:absolute;left:3px;top:17px;width:22px;height:5px;background:#13132a;border:1px solid #1a1a3a;}
+.extra{position:absolute;right:2px;top:16px;width:8px;height:10px;}
+.coffee-cup{background:#3d2000;border-top:2px solid #5a3300;}
+.notebook{background:#1a2a1a;border:1px solid #226622;}
+.mini-plant{background:#226622;border-radius:50% 50% 0 0;}
+
+/* server rack */
+.server{position:absolute;width:18px;background:#1e2e3e;border:1px solid #2a3a4a;z-index:3;}
+.bay{height:10px;background:#111e2a;border:1px solid #1a2a3a;margin:2px;display:flex;align-items:center;justify-content:flex-end;padding-right:2px;}
+.led{width:3px;height:3px;border-radius:50%;}
+
+/* plants */
+.plant{position:absolute;z-index:3;}
+.pot{background:#7a4422;border:1px solid #553311;}
+.leaf{background:#2a7a2a;border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;}
+
+/* whiteboard */
+.wb{position:absolute;background:#101e30;border:1px solid rgba(79,163,255,0.4);z-index:3;overflow:hidden;}
+.wb-line{height:1.5px;background:rgba(79,163,255,0.2);margin:5px 4px 0;}
+
+/* bookshelf */
+.bookshelf{position:absolute;background:#1a1220;border:1px solid #2a1a30;z-index:3;display:flex;flex-direction:column;gap:1px;padding:2px;}
+.shelf-row{display:flex;gap:1px;height:10px;}
+.book{height:10px;border-radius:1px 1px 0 0;}
+
+/* coffee machine */
+.cm{position:absolute;width:22px;height:32px;background:#1a1a2e;border:1px solid #2a2a4e;z-index:3;}
+.cm-screen{position:absolute;top:3px;left:3px;width:10px;height:7px;background:#001420;display:flex;align-items:center;justify-content:center;font-size:4px;color:#00ffcc;}
+.cm-nozzle{position:absolute;top:16px;left:8px;width:6px;height:8px;background:#111122;}
+
+/* window */
+.win{position:absolute;background:#0a0a18;border:1px solid #1a2a4a;z-index:3;overflow:hidden;}
+.win-sky{width:100%;height:55%;background:linear-gradient(#000514,#001028);}
+.win-city{width:100%;height:45%;background:#050518;display:flex;align-items:flex-end;}
+.building{background:#060618;display:flex;flex-direction:column;justify-content:flex-start;padding-top:4px;flex:1;}
+.bwin{width:3px;height:2px;margin:1px auto;background:rgba(255,238,136,0.4);}
+.win-cross-h{position:absolute;top:50%;left:0;right:0;height:1px;background:rgba(26,42,74,0.5);}
+.win-cross-v{position:absolute;left:50%;top:0;bottom:0;width:1px;background:rgba(26,42,74,0.5);}
+
+/* reception */
+.reception{position:absolute;background:#1a1a3a;border:1px solid #0050ff;z-index:3;}
+
+/* sofa */
+.sofa{position:absolute;background:#1a1230;border:1px solid #2a1a40;z-index:3;}
+
+/* robot */
+.robot-icon{position:absolute;z-index:3;}
+
+/* characters */
+.char{position:absolute;z-index:10;display:flex;flex-direction:column;align-items:center;}
+.char-sprite{width:16px;height:26px;position:relative;}
+
+/* chat bubble */
+.bubble{position:absolute;z-index:20;pointer-events:none;}
+.bubble-box{
+  background:rgba(13,26,46,0.95);
+  border:1px solid rgba(79,163,255,0.28);
+  border-radius:8px 8px 8px 3px;
+  padding:5px 8px 10px;
+  font-size:8px;
+  color:#cceeff;
+  line-height:1.5;
+  max-width:140px;
+  min-width:90px;
+  position:relative;
+}
+.bubble-box.right{border-radius:8px 8px 3px 8px;}
+.bubble-name{display:block;font-size:8px;font-weight:bold;margin-bottom:2px;}
+.bubble-tail{
+  position:absolute;bottom:-8px;left:10px;
+  width:0;height:0;
+  border-left:6px solid transparent;
+  border-right:10px solid transparent;
+  border-top:8px solid rgba(13,26,46,0.95);
+}
+.bubble-tail.right{left:auto;right:10px;}
+.bubble-badge{
+  position:absolute;bottom:3px;left:8px;
+  font-size:7px;display:flex;align-items:center;gap:3px;
+}
+.badge-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+.convo-link{position:absolute;z-index:8;pointer-events:none;}
+
+/* printer */
+.printer{position:absolute;background:#1e1e30;border:1px solid #2a2a44;z-index:3;}
+</style>
+</head>
+<body>
+<h2>SAVVY AI — OFFICE PREVIEW v3 · agents talking to each other</h2>
+
+<div id="wrap">
+
+<!-- ROOMS -->
+<div class="room" style="left:5px;top:5px;width:228px;height:168px;background:rgba(13,26,46,0.9);">
+  <span class="room-label" style="color:#4fa3ff">R&D LAB</span></div>
+<div class="room" style="left:243px;top:5px;width:183px;height:168px;background:rgba(26,13,46,0.9);">
+  <span class="room-label" style="color:#aa66ff">AI CORE</span></div>
+<div class="room" style="left:436px;top:5px;width:173px;height:168px;background:rgba(13,46,26,0.9);">
+  <span class="room-label" style="color:#00cc88">INFRA</span></div>
+<div class="room" style="left:619px;top:5px;width:236px;height:168px;background:rgba(46,26,13,0.9);">
+  <span class="room-label" style="color:#ff8c00">OPS COMMAND</span></div>
+<div class="room" style="left:5px;top:183px;width:378px;height:183px;background:rgba(26,26,13,0.9);">
+  <span class="room-label" style="color:#ffee44">DESIGN STUDIO</span></div>
+<div class="room" style="left:393px;top:183px;width:213px;height:183px;background:rgba(46,13,13,0.9);">
+  <span class="room-label" style="color:#ff4466">LEGAL WING</span></div>
+<div class="room" style="left:616px;top:183px;width:239px;height:183px;background:rgba(13,46,46,0.9);">
+  <span class="room-label" style="color:#00ffcc">ROBOTICS LAB</span></div>
+<div class="room" style="left:5px;top:376px;width:850px;height:159px;background:rgba(17,17,24,0.9);">
+  <span class="room-label" style="color:rgba(79,163,255,0.7)">LOBBY — SEOUL HQ</span></div>
+
+<!-- WINDOWS -->
+<div class="win" style="left:50px;top:14px;width:60px;height:45px;">
+  <div class="win-sky"></div><div class="win-city">
+    <div class="building" style="height:30px"><div class="bwin"></div><div class="bwin"></div></div>
+    <div class="building" style="height:20px"><div class="bwin"></div></div>
+    <div class="building" style="height:35px"><div class="bwin"></div><div class="bwin"></div><div class="bwin"></div></div>
+    <div class="building" style="height:22px"><div class="bwin"></div></div>
+  </div>
+  <div class="win-cross-h"></div><div class="win-cross-v"></div>
+</div>
+<div class="win" style="left:322px;top:10px;width:55px;height:35px;">
+  <div class="win-sky"></div><div class="win-city">
+    <div class="building" style="height:18px"><div class="bwin"></div></div>
+    <div class="building" style="height:25px"><div class="bwin"></div><div class="bwin"></div></div>
+    <div class="building" style="height:15px"></div>
+  </div>
+  <div class="win-cross-h"></div><div class="win-cross-v"></div>
+</div>
+<div class="win" style="left:631px;top:10px;width:70px;height:42px;">
+  <div class="win-sky"></div><div class="win-city">
+    <div class="building" style="height:20px"><div class="bwin"></div></div>
+    <div class="building" style="height:32px"><div class="bwin"></div><div class="bwin"></div></div>
+    <div class="building" style="height:24px"><div class="bwin"></div></div>
+    <div class="building" style="height:28px"><div class="bwin"></div><div class="bwin"></div></div>
+  </div>
+  <div class="win-cross-h"></div><div class="win-cross-v"></div>
+</div>
+<div class="win" style="left:60px;top:192px;width:68px;height:44px;">
+  <div class="win-sky"></div><div class="win-city">
+    <div class="building" style="height:25px"><div class="bwin"></div></div>
+    <div class="building" style="height:18px"><div class="bwin"></div></div>
+    <div class="building" style="height:30px"><div class="bwin"></div><div class="bwin"></div></div>
+  </div>
+  <div class="win-cross-h"></div><div class="win-cross-v"></div>
+</div>
+<div class="win" style="left:780px;top:188px;width:60px;height:48px;">
+  <div class="win-sky"></div><div class="win-city">
+    <div class="building" style="height:22px"><div class="bwin"></div></div>
+    <div class="building" style="height:30px"><div class="bwin"></div><div class="bwin"></div></div>
+    <div class="building" style="height:18px"></div>
+  </div>
+  <div class="win-cross-h"></div><div class="win-cross-v"></div>
+</div>
+<div class="win" style="left:105px;top:385px;width:78px;height:50px;">
+  <div class="win-sky"></div><div class="win-city">
+    <div class="building" style="height:28px"><div class="bwin"></div><div class="bwin"></div></div>
+    <div class="building" style="height:20px"><div class="bwin"></div></div>
+    <div class="building" style="height:35px"><div class="bwin"></div><div class="bwin"></div><div class="bwin"></div></div>
+  </div>
+  <div class="win-cross-h"></div><div class="win-cross-v"></div>
+</div>
+<div class="win" style="left:662px;top:385px;width:78px;height:50px;">
+  <div class="win-sky"></div><div class="win-city">
+    <div class="building" style="height:25px"><div class="bwin"></div></div>
+    <div class="building" style="height:32px"><div class="bwin"></div><div class="bwin"></div></div>
+    <div class="building" style="height:20px"><div class="bwin"></div></div>
+  </div>
+  <div class="win-cross-h"></div><div class="win-cross-v"></div>
+</div>
+
+<!-- BOOKSHELVES -->
+<div class="bookshelf" style="left:8px;top:20px;width:36px;height:52px;">
+  <div class="shelf-row"><div class="book" style="width:5px;background:#0050ff;"></div><div class="book" style="width:4px;background:#ff4466;"></div><div class="book" style="width:6px;background:#00cc88;"></div><div class="book" style="width:4px;background:#ffee44;"></div></div>
+  <div class="shelf-row"><div class="book" style="width:6px;background:#4fa3ff;"></div><div class="book" style="width:4px;background:#cc44aa;"></div><div class="book" style="width:5px;background:#ff8c00;"></div><div class="book" style="width:4px;background:#44aaff;"></div></div>
+  <div class="shelf-row"><div class="book" style="width:4px;background:#00cc88;"></div><div class="book" style="width:6px;background:#0050ff;"></div><div class="book" style="width:5px;background:#ffee44;"></div><div class="book" style="width:4px;background:#ff4466;"></div></div>
+</div>
+<div class="bookshelf" style="left:762px;top:10px;width:28px;height:52px;">
+  <div class="shelf-row"><div class="book" style="width:5px;background:#ff8c00;"></div><div class="book" style="width:4px;background:#ffee44;"></div><div class="book" style="width:5px;background:#ff4466;"></div></div>
+  <div class="shelf-row"><div class="book" style="width:4px;background:#ff8c00;"></div><div class="book" style="width:6px;background:#cc4400;"></div><div class="book" style="width:4px;background:#ffcc00;"></div></div>
+  <div class="shelf-row"><div class="book" style="width:5px;background:#ff6600;"></div><div class="book" style="width:4px;background:#ffaa00;"></div><div class="book" style="width:5px;background:#cc8800;"></div></div>
+</div>
+<div class="bookshelf" style="left:398px;top:192px;width:40px;height:62px;">
+  <div class="shelf-row"><div class="book" style="width:6px;background:#ff4466;"></div><div class="book" style="width:4px;background:#ff6688;"></div><div class="book" style="width:5px;background:#cc3355;"></div><div class="book" style="width:4px;background:#ff8800;"></div></div>
+  <div class="shelf-row"><div class="book" style="width:5px;background:#aa2244;"></div><div class="book" style="width:6px;background:#ff4466;"></div><div class="book" style="width:4px;background:#cc3366;"></div></div>
+  <div class="shelf-row"><div class="book" style="width:4px;background:#ff4466;"></div><div class="book" style="width:5px;background:#cc2244;"></div><div class="book" style="width:6px;background:#ff6688;"></div><div class="book" style="width:3px;background:#882233;"></div></div>
+</div>
+
+<!-- WHITEBOARDS -->
+<div class="wb" style="left:156px;top:20px;width:22px;height:62px;">
+  <div class="wb-line"></div><div class="wb-line" style="width:60%"></div><div class="wb-line"></div><div class="wb-line" style="width:75%"></div><div class="wb-line" style="width:45%"></div><div class="wb-line"></div>
+</div>
+<div class="wb" style="left:181px;top:20px;width:24px;height:62px;border-color:rgba(79,163,255,0.6);">
+  <div class="wb-line"></div><div class="wb-line" style="width:80%"></div><div class="wb-line" style="width:55%"></div><div class="wb-line"></div><div class="wb-line" style="width:70%"></div><div class="wb-line"></div>
+</div>
+<div class="wb" style="left:312px;top:192px;width:30px;height:62px;border-color:rgba(255,238,68,0.5);">
+  <div class="wb-line" style="background:rgba(255,238,68,0.22)"></div><div class="wb-line" style="background:rgba(255,238,68,0.22);width:70%"></div><div class="wb-line" style="background:rgba(255,238,68,0.22)"></div><div class="wb-line" style="background:rgba(255,238,68,0.22);width:50%"></div><div class="wb-line" style="background:rgba(255,238,68,0.22)"></div>
+</div>
+<div class="wb" style="left:792px;top:15px;width:20px;height:56px;border-color:rgba(255,140,0,0.5);">
+  <div class="wb-line" style="background:rgba(255,140,0,0.2)"></div><div class="wb-line" style="background:rgba(255,140,0,0.2);width:65%"></div><div class="wb-line" style="background:rgba(255,140,0,0.2)"></div><div class="wb-line" style="background:rgba(255,140,0,0.2);width:80%"></div>
+</div>
+
+<!-- SERVERS - Infra -->
+<div class="server" style="left:438px;top:20px;height:92px;">
+  <div class="bay"><div class="led" id="led1" style="background:#00ff44"></div></div>
+  <div class="bay"><div class="led" style="background:#00aaff;opacity:0.5"></div></div>
+  <div class="bay"><div class="led" id="led2" style="background:#00ff44"></div></div>
+  <div class="bay"><div class="led" style="background:#00aaff;opacity:0.5"></div></div>
+  <div class="bay"><div class="led" style="background:#00ff44"></div></div>
+</div>
+<div class="server" style="left:460px;top:20px;height:92px;">
+  <div class="bay"><div class="led" style="background:#00aaff;opacity:0.5"></div></div>
+  <div class="bay"><div class="led" style="background:#00ff44"></div></div>
+  <div class="bay"><div class="led" style="background:#00aaff;opacity:0.5"></div></div>
+  <div class="bay"><div class="led" id="led3" style="background:#00ff44"></div></div>
+  <div class="bay"><div class="led" style="background:#00aaff;opacity:0.5"></div></div>
+</div>
+<div class="server" style="left:482px;top:20px;height:92px;">
+  <div class="bay"><div class="led" style="background:#00ff44"></div></div>
+  <div class="bay"><div class="led" style="background:#00aaff;opacity:0.5"></div></div>
+  <div class="bay"><div class="led" id="led4" style="background:#00ff44"></div></div>
+  <div class="bay"><div class="led" style="background:#00aaff;opacity:0.5"></div></div>
+  <div class="bay"><div class="led" style="background:#00ff44"></div></div>
+</div>
+<!-- Servers - AI Core -->
+<div class="server" style="left:245px;top:20px;height:92px;">
+  <div class="bay"><div class="led" style="background:#aa66ff"></div></div>
+  <div class="bay"><div class="led" style="background:#aa66ff;opacity:0.4"></div></div>
+  <div class="bay"><div class="led" style="background:#aa66ff"></div></div>
+  <div class="bay"><div class="led" style="background:#aa66ff;opacity:0.4"></div></div>
+  <div class="bay"><div class="led" style="background:#aa66ff"></div></div>
+</div>
+<!-- Servers - Robotics -->
+<div class="server" style="left:618px;top:192px;height:88px;">
+  <div class="bay"><div class="led" style="background:#00ffcc"></div></div>
+  <div class="bay"><div class="led" style="background:#00ffcc;opacity:0.4"></div></div>
+  <div class="bay"><div class="led" style="background:#00ffcc"></div></div>
+  <div class="bay"><div class="led" style="background:#00ffcc;opacity:0.4"></div></div>
+  <div class="bay"><div class="led" style="background:#00ffcc"></div></div>
+</div>
+
+<!-- PRINTERS -->
+<div class="printer" style="left:254px;top:332px;width:32px;height:20px;">
+  <div style="position:absolute;top:4px;left:4px;right:4px;height:5px;background:#111120;"></div>
+  <div style="position:absolute;top:13px;left:6px;width:20px;height:1px;background:#ddd;"></div>
+  <div style="position:absolute;top:3px;right:3px;width:4px;height:4px;border-radius:50%;background:#00ff44;" id="prnLed"></div>
+</div>
+<div class="printer" style="left:572px;top:332px;width:32px;height:20px;">
+  <div style="position:absolute;top:4px;left:4px;right:4px;height:5px;background:#111120;"></div>
+  <div style="position:absolute;top:13px;left:6px;width:20px;height:1px;background:#ddd;"></div>
+  <div style="position:absolute;top:3px;right:3px;width:4px;height:4px;border-radius:50%;background:#00ff44;"></div>
+</div>
+
+<!-- COFFEE MACHINES -->
+<div class="cm" style="left:292px;top:312px;">
+  <div class="cm-screen">READY</div>
+  <div style="position:absolute;top:4px;right:3px;display:flex;flex-direction:column;gap:3px;">
+    <div style="width:4px;height:4px;border-radius:50%;background:#0050ff;opacity:0.8;"></div>
+    <div style="width:4px;height:4px;border-radius:50%;background:#00cc88;opacity:0.8;"></div>
+    <div style="width:4px;height:4px;border-radius:50%;background:#ffee44;opacity:0.8;"></div>
+  </div>
+  <div class="cm-nozzle"></div>
+  <div style="position:absolute;bottom:3px;left:4px;right:4px;height:6px;background:#0d0d1a;display:flex;align-items:center;justify-content:center;">
+    <div style="width:8px;height:5px;background:#3d2000;border-top:2px solid #5a3300;"></div>
+  </div>
+</div>
+<div class="cm" style="left:16px;top:492px;">
+  <div class="cm-screen">READY</div>
+  <div class="cm-nozzle"></div>
+  <div style="position:absolute;bottom:3px;left:4px;right:4px;height:6px;background:#0d0d1a;display:flex;align-items:center;justify-content:center;">
+    <div style="width:8px;height:5px;background:#3d2000;border-top:2px solid #5a3300;"></div>
+  </div>
+</div>
+
+<!-- PLANTS -->
+<div class="plant" style="left:10px;top:320px;">
+  <div class="leaf" style="width:22px;height:18px;margin:0 auto;background:#2a7a2a;"></div>
+  <div class="leaf" style="width:14px;height:10px;margin:-4px auto 0;background:#3a9a3a;border-radius:50%;"></div>
+  <div class="pot" style="width:18px;height:10px;margin:0 auto;border-radius:0 0 3px 3px;"></div>
+</div>
+<div class="plant" style="left:356px;top:320px;">
+  <div class="leaf" style="width:22px;height:18px;margin:0 auto;background:#2a7a2a;"></div>
+  <div class="leaf" style="width:14px;height:10px;margin:-4px auto 0;background:#3a9a3a;border-radius:50%;"></div>
+  <div class="pot" style="width:18px;height:10px;margin:0 auto;border-radius:0 0 3px 3px;"></div>
+</div>
+<div class="plant" style="left:192px;top:192px;">
+  <div class="leaf" style="width:16px;height:12px;margin:0 auto;background:#2a7a2a;"></div>
+  <div class="pot" style="width:12px;height:7px;margin:0 auto;border-radius:0 0 2px 2px;"></div>
+</div>
+<div class="plant" style="left:582px;top:188px;">
+  <div class="leaf" style="width:16px;height:12px;margin:0 auto;background:#226622;"></div>
+  <div class="pot" style="width:12px;height:7px;margin:0 auto;border-radius:0 0 2px 2px;"></div>
+</div>
+<div class="plant" style="left:15px;top:412px;">
+  <div class="leaf" style="width:24px;height:20px;margin:0 auto;background:#2a7a2a;"></div>
+  <div class="leaf" style="width:16px;height:12px;margin:-5px auto 0;background:#3a9a3a;border-radius:50%;"></div>
+  <div class="pot" style="width:20px;height:11px;margin:0 auto;border-radius:0 0 3px 3px;"></div>
+</div>
+<div class="plant" style="left:823px;top:412px;">
+  <div class="leaf" style="width:24px;height:20px;margin:0 auto;background:#2a7a2a;"></div>
+  <div class="leaf" style="width:16px;height:12px;margin:-5px auto 0;background:#3a9a3a;border-radius:50%;"></div>
+  <div class="pot" style="width:20px;height:11px;margin:0 auto;border-radius:0 0 3px 3px;"></div>
+</div>
+
+<!-- RECEPTION DESK -->
+<div class="reception" style="left:308px;top:400px;width:130px;height:46px;">
+  <div style="position:absolute;top:0;left:0;right:0;height:8px;background:#22224a;"></div>
+  <div style="position:absolute;top:10px;left:10px;width:26px;height:20px;background:#0d0d1a;border:1px solid #222244;">
+    <div style="margin:2px;height:2px;background:rgba(0,255,204,0.5);"></div>
+    <div style="margin:2px;height:2px;width:80%;background:rgba(0,255,204,0.4);"></div>
+    <div style="margin:2px;height:2px;width:60%;background:rgba(0,255,204,0.3);"></div>
+  </div>
+  <div style="position:absolute;top:20px;left:52px;font-size:7px;color:rgba(79,163,255,0.75);letter-spacing:1px;">RECEPTION</div>
+  <div style="position:absolute;top:10px;right:10px;width:8px;height:14px;background:#cc4466;border-radius:50% 50% 0 0;"></div>
+  <div style="position:absolute;top:23px;right:13px;width:2px;height:10px;background:#226622;"></div>
+</div>
+
+<!-- SOFAS -->
+<div class="sofa" style="left:58px;top:416px;width:50px;height:20px;">
+  <div style="position:absolute;top:0;left:0;right:0;height:6px;background:#1e1635;"></div>
+  <div style="position:absolute;top:6px;left:2px;width:22px;height:12px;background:#221640;border:1px solid #2a1a4a;"></div>
+  <div style="position:absolute;top:6px;left:26px;width:22px;height:12px;background:#221640;border:1px solid #2a1a4a;"></div>
+  <div style="position:absolute;top:6px;left:0;width:3px;height:14px;background:#1e1635;"></div>
+  <div style="position:absolute;top:6px;right:0;width:3px;height:14px;background:#1e1635;"></div>
+</div>
+<div class="sofa" style="left:718px;top:416px;width:50px;height:20px;">
+  <div style="position:absolute;top:0;left:0;right:0;height:6px;background:#1e1635;"></div>
+  <div style="position:absolute;top:6px;left:2px;width:22px;height:12px;background:#221640;border:1px solid #2a1a4a;"></div>
+  <div style="position:absolute;top:6px;left:26px;width:22px;height:12px;background:#221640;border:1px solid #2a1a4a;"></div>
+  <div style="position:absolute;top:6px;left:0;width:3px;height:14px;background:#1e1635;"></div>
+  <div style="position:absolute;top:6px;right:0;width:3px;height:14px;background:#1e1635;"></div>
+</div>
+
+<!-- DESKS (inline, grouped by room color) -->
+<div id="desks"></div>
+
+<!-- ROBOT ICON - Robotics Lab -->
+<div class="robot-icon" style="left:698px;top:196px;">
+  <!-- head -->
+  <div style="position:relative;width:34px;">
+    <div style="width:18px;height:14px;background:#2a3a4a;border:1px solid rgba(68,170,255,0.55);margin:0 auto;position:relative;">
+      <div style="position:absolute;left:2px;top:3px;width:5px;height:5px;background:#00ffcc;border-radius:1px;" id="reye1"></div>
+      <div style="position:absolute;right:2px;top:3px;width:5px;height:5px;background:#00ffcc;border-radius:1px;" id="reye2"></div>
+    </div>
+    <!-- body -->
+    <div style="width:24px;height:20px;background:#2a3a4a;border:1px solid rgba(68,170,255,0.4);margin:0 auto;position:relative;">
+      <div style="position:absolute;inset:2px;background:#001a30;">
+        <div id="rbar" style="position:absolute;bottom:0;left:1px;width:6px;background:rgba(0,255,204,0.5);"></div>
+        <div id="rbar2" style="position:absolute;bottom:0;right:1px;width:6px;background:rgba(0,80,255,0.5);"></div>
+      </div>
+    </div>
+    <!-- arms -->
+    <div style="position:absolute;top:14px;left:0;width:5px;height:14px;background:#2a3a4a;border:1px solid rgba(68,170,255,0.3);"></div>
+    <div style="position:absolute;top:14px;right:0;width:5px;height:14px;background:#2a3a4a;border:1px solid rgba(68,170,255,0.3);"></div>
+    <!-- legs -->
+    <div style="display:flex;gap:4px;justify-content:center;margin-top:1px;">
+      <div style="width:7px;height:14px;background:#2a3a4a;border:1px solid rgba(68,170,255,0.3);"></div>
+      <div style="width:7px;height:14px;background:#2a3a4a;border:1px solid rgba(68,170,255,0.3);"></div>
+    </div>
+    <div style="text-align:center;font-size:7px;color:rgba(0,255,204,0.65);margin-top:2px;">G1</div>
+  </div>
+</div>
+
+<!-- SVG for convo lines -->
+<svg id="links" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:9;"></svg>
+
+<!-- CHARACTERS + BUBBLES rendered by JS -->
+<div id="chars"></div>
+
+</div><!-- end wrap -->
+
+<script>
+// ── Desk builder ──
+const deskColors = {
+  rd:'#4fa3ff', ai:'#aa66ff', infra:'#00cc88', ops:'#ff8c00',
+  design:'#ffee44', legal:'#ff4466', robotics:'#00ffcc'
+};
+const deskPositions = [
+  // R&D
+  {x:18,y:54,r:'rd',e:'coffee'},{x:72,y:54,r:'rd',e:'notebook'},{x:126,y:54,r:'rd',e:'plant'},
+  {x:18,y:114,r:'rd',e:'coffee'},{x:72,y:114,r:'rd',e:'notebook'},{x:126,y:114,r:'rd',e:'coffee'},
+  // AI Core
+  {x:246,y:54,r:'ai',e:'coffee'},{x:298,y:54,r:'ai',e:'notebook'},{x:350,y:54,r:'ai',e:'plant'},
+  {x:246,y:114,r:'ai',e:'coffee'},{x:298,y:114,r:'ai',e:'notebook'},
+  // Infra
+  {x:438,y:54,r:'infra',e:'coffee'},{x:492,y:54,r:'infra',e:'coffee'},
+  {x:438,y:114,r:'infra',e:'notebook'},{x:492,y:114,r:'infra',e:'plant'},
+  // OPS
+  {x:622,y:54,r:'ops',e:'coffee'},{x:676,y:54,r:'ops',e:'notebook'},
+  {x:622,y:114,r:'ops',e:'plant'},{x:676,y:114,r:'ops',e:'coffee'},{x:730,y:114,r:'ops',e:'notebook'},
+  // Design
+  {x:18,y:224,r:'design',e:'plant'},{x:72,y:224,r:'design',e:'coffee'},{x:126,y:224,r:'design',e:'notebook'},{x:180,y:224,r:'design',e:'coffee'},
+  {x:18,y:294,r:'design',e:'notebook'},{x:72,y:294,r:'design',e:'plant'},{x:126,y:294,r:'design',e:'coffee'},
+  // Legal
+  {x:396,y:228,r:'legal',e:'coffee'},{x:448,y:228,r:'legal',e:'notebook'},{x:500,y:228,r:'legal',e:'coffee'},
+  {x:396,y:294,r:'legal',e:'plant'},{x:448,y:294,r:'legal',e:'coffee'},
+  // Robotics
+  {x:620,y:228,r:'robotics',e:'coffee'},{x:672,y:228,r:'robotics',e:'notebook'},
+  {x:620,y:296,r:'robotics',e:'plant'},
+];
+
+function makeDesk(p) {
+  const col = deskColors[p.r];
+  const d = document.createElement('div');
+  d.className = 'desk';
+  d.style.cssText = `left:${p.x}px;top:${p.y}px;`;
+  d.innerHTML = `
+    <div class="desk-body">
+      <div class="monitor mon1">
+        <div style="position:absolute;inset:2px;background:${col}11;">
+          <div class="sl" style="background:${col};width:${8+Math.random()*7|0}px;opacity:0.75;margin-top:1px;"></div>
+          <div class="sl" style="background:${col};width:${5+Math.random()*8|0}px;opacity:0.65;"></div>
+          <div class="sl" style="background:${col};width:${6+Math.random()*6|0}px;opacity:0.55;"></div>
+        </div>
+      </div>
+      <div class="monitor mon2">
+        <div style="position:absolute;inset:2px;background:rgba(255,140,0,0.07);">
+          <div style="height:1.5px;background:rgba(255,140,0,0.5);width:${5+Math.random()*5|0}px;margin:1px 1px 0;"></div>
+          <div style="height:1.5px;background:rgba(255,140,0,0.4);width:${4+Math.random()*4|0}px;margin:1px;"></div>
+        </div>
+      </div>
+      <div style="position:absolute;left:11px;top:14px;width:3px;height:4px;background:#1a1a2e;"></div>
+      <div class="keyboard"></div>
+      <div style="position:absolute;left:29px;top:17px;width:6px;height:8px;border-radius:50% 50% 50% 50%/60% 60% 40% 40%;background:#13132a;"></div>
+      ${p.e==='coffee'?`<div style="position:absolute;right:2px;top:17px;width:7px;height:10px;background:#3d2000;border-top:2px solid #5a3300;border-radius:1px;"></div>`:''}
+      ${p.e==='notebook'?`<div style="position:absolute;right:2px;top:17px;width:7px;height:10px;background:#1a2a1a;border:1px solid #226622;"></div>`:''}
+      ${p.e==='plant'?`<div style="position:absolute;right:2px;top:16px;"><div style="width:8px;height:6px;background:#226622;border-radius:50% 50% 0 0;margin:0 auto;"></div><div style="width:6px;height:5px;background:#7a4422;margin:0 auto;"></div></div>`:''}
+    </div>`;
+  return d;
+}
+
+const desksEl = document.getElementById('desks');
+deskPositions.forEach(p => desksEl.appendChild(makeDesk(p)));
+
+// ── Conversations ──
+const CONVOS = [
+  {
+    pairs: ['SAVVY','CLAUDE'],
+    exchanges: [
+      ['SAVVY',  'RAG precision up 12% today. New chunking paid off.'],
+      ['CLAUDE', 'Saw the diff. The overlap threshold change was the key.'],
+      ['SAVVY',  'Rami is going to love the benchmark report.'],
+      ['CLAUDE', 'Already writing the summary. Clean numbers.'],
+    ]
+  },
+  {
+    pairs: ['GOOGLE','OPS-1'],
+    exchanges: [
+      ['GOOGLE', 'All 6 endpoints nominal. 42ms avg latency.'],
+      ['OPS-1',  'CPU at 34%. Traffic spike expected at 3pm Seoul.'],
+      ['GOOGLE', 'Already bumped the quota. We are covered.'],
+      ['OPS-1',  'Deploy pipeline is green. Good to go.'],
+    ]
+  },
+  {
+    pairs: ['DEV-1','DEV-2'],
+    exchanges: [
+      ['DEV-1', 'Found the bug — typo in line 47. Classic.'],
+      ['DEV-2', '11 of 12 tests passing now. One edge case left.'],
+      ['DEV-1', 'Empty array input? I hit that yesterday.'],
+      ['DEV-2', 'Exactly that. Fixing it now.'],
+    ]
+  },
+];
+
+const ACTORS = [
+  { name:'SAVVY',   cx:308, cy:128, color:'#0050ff', convo:0, side:0, state:'WORKING',   sc:'#00ffcc' },
+  { name:'CLAUDE',  cx:106, cy:100, color:'#4fa3ff', convo:0, side:1, state:'THINKING',  sc:'#ffee44' },
+  { name:'GOOGLE',  cx:706, cy:100, color:'#ff8c00', convo:1, side:0, state:'WORKING',   sc:'#00ffcc' },
+  { name:'DEV-1',   cx:108, cy:306, color:'#00cc88', convo:2, side:0, state:'WORKING',   sc:'#00ffcc' },
+  { name:'DEV-2',   cx:454, cy:306, color:'#cc44aa', convo:2, side:1, state:'REVIEWING', sc:'#aaccff' },
+  { name:'OPS-1',   cx:562, cy:96,  color:'#ffcc00', convo:1, side:1, state:'WORKING',   sc:'#00ffcc' },
+  { name:'ROBOT-E', cx:714, cy:316, color:'#44aaff', convo:-1,side:-1,state:'WORKING',   sc:'#00ffcc',
+    solo:'Joint sweep complete. 24/24 axes nominal.' },
+];
+
+function makeChar(a) {
+  const w = document.createElement('div');
+  w.className = 'char';
+  w.style.cssText = `left:${a.cx-8}px;top:${a.cy-32}px;`;
+  w.innerHTML = `
+    <div class="char-sprite" id="cs_${a.name}">
+      <div style="position:absolute;bottom:-2px;left:1px;width:14px;height:3px;border-radius:50%;background:rgba(0,0,0,0.3);"></div>
+      <div style="position:absolute;top:0;left:3px;width:10px;height:7px;background:${a.color};border-radius:2px 2px 0 0;"></div>
+      <div style="position:absolute;top:1px;left:3px;width:10px;height:2px;background:${a.color}cc;"></div>
+      <div style="position:absolute;top:1px;left:3px;width:2px;height:5px;background:${a.color}cc;"></div>
+      <div style="position:absolute;top:1px;right:3px;width:2px;height:5px;background:${a.color}cc;"></div>
+      <div style="position:absolute;top:4px;left:4px;width:3px;height:3px;background:#000;"></div>
+      <div style="position:absolute;top:4px;left:9px;width:3px;height:3px;background:#000;"></div>
+      <div style="position:absolute;top:4px;left:5px;width:1px;height:1px;background:#fff;"></div>
+      <div style="position:absolute;top:4px;left:10px;width:1px;height:1px;background:#fff;"></div>
+      <div style="position:absolute;top:6px;left:5px;width:6px;height:4px;background:#d4a470;"></div>
+      <div style="position:absolute;top:9px;left:2px;width:12px;height:10px;background:${a.color};"></div>
+      <div style="position:absolute;top:9px;left:2px;width:12px;height:2px;background:rgba(255,255,255,0.1);"></div>
+      <div style="position:absolute;top:10px;left:0;width:2px;height:7px;background:${a.color}cc;"></div>
+      <div style="position:absolute;top:10px;right:0;width:2px;height:7px;background:${a.color}cc;"></div>
+      <div style="position:absolute;top:16px;left:0;width:2px;height:2px;background:#d4a470;"></div>
+      <div style="position:absolute;top:16px;right:0;width:2px;height:2px;background:#d4a470;"></div>
+      <div style="position:absolute;top:18px;left:3px;width:5px;height:8px;background:${a.color}99;"></div>
+      <div style="position:absolute;top:18px;left:8px;width:5px;height:8px;background:${a.color}99;"></div>
+      <div style="position:absolute;top:24px;left:2px;width:6px;height:3px;background:#111;"></div>
+      <div style="position:absolute;top:24px;left:8px;width:6px;height:3px;background:#111;"></div>
+    </div>`;
+  return w;
+}
+
+function makeBubble(a, text, isRight) {
+  const div = document.createElement('div');
+  div.className = 'bubble';
+  const bx = isRight ? a.cx - 155 : a.cx - 12;
+  const by = a.cy - 105;
+  div.style.cssText = `left:${bx}px;top:${by}px;`;
+  div.innerHTML = `
+    <div class="bubble-box${isRight?' right':''}" id="bb_${a.name}">
+      <span class="bubble-name" style="color:${a.color}">${a.name}</span>
+      <span id="bt_${a.name}" style="display:block;">${text}</span>
+      <div class="bubble-tail${isRight?' right':''}"></div>
+      <div class="bubble-badge">
+        <div class="badge-dot" style="background:${a.sc}"></div>
+        <span style="color:${a.sc}">${a.state}</span>
+      </div>
+    </div>`;
+  return div;
+}
+
+const charsEl = document.getElementById('chars');
+ACTORS.forEach(a => {
+  charsEl.appendChild(makeChar(a));
+  const isRight = a.side === 1;
+  const initText = a.solo || (a.convo >= 0 ? CONVOS[a.convo].exchanges[0][1] : '...');
+  charsEl.appendChild(makeBubble(a, initText, isRight));
+});
+
+// ── SVG convo links ──
+const svg = document.getElementById('links');
+CONVOS.forEach(c => {
+  const a1 = ACTORS.find(a=>a.name===c.pairs[0]);
+  const a2 = ACTORS.find(a=>a.name===c.pairs[1]);
+  const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+  line.setAttribute('x1', a1.cx); line.setAttribute('y1', a1.cy-14);
+  line.setAttribute('x2', a2.cx); line.setAttribute('y2', a2.cy-14);
+  line.setAttribute('stroke', 'rgba(79,163,255,0.12)');
+  line.setAttribute('stroke-width', '1');
+  line.setAttribute('stroke-dasharray', '4 6');
+  svg.appendChild(line);
+});
+
+// ── Animation loop ──
+let stepIndex = 0;
+let lastStep = Date.now();
+const STEP_MS = 5000; // change dialog every 5s
+
+// Walk bob animation
+let bobPhase = 0;
+let lastFrame = Date.now();
+
+function tick() {
+  const now = Date.now();
+  const dt = (now - lastFrame) / 1000;
+  lastFrame = now;
+
+  // slow walk bob — ~0.8s period
+  bobPhase += dt * 1.25; // radians/sec → full cycle = 2π/1.25 ≈ 5s... too slow
+  // actually 2π * 1.25 ≈ ~0.8s period feels good
+  bobPhase += dt * 7.5; // ~0.8s period
+
+  // bob characters
+  ACTORS.forEach(a => {
+    const el = document.getElementById('cs_'+a.name);
+    if(el) el.style.transform = `translateY(${Math.sin(bobPhase + ACTORS.indexOf(a)*0.9)*1.2|0}px)`;
+  });
+
+  // slow LED blink — every ~1.2s
+  const ledOn = Math.floor(now / 1200) % 2 === 0;
+  ['led1','led2','led3','led4'].forEach((id,i) => {
+    const el = document.getElementById(id);
+    if(el) el.style.background = (ledOn ^ (i%2===0)) ? '#00ff44' : '#004400';
+  });
+
+  // robot eyes slow pulse
+  const eyeAlpha = 0.7 + Math.sin(now/2000)*0.25;
+  ['reye1','reye2'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.style.opacity = eyeAlpha;
+  });
+
+  // robot chest bars slow animation
+  const rbar = document.getElementById('rbar');
+  const rbar2 = document.getElementById('rbar2');
+  if(rbar)  rbar.style.height  = (4+Math.sin(now/2500)*3).toFixed(1)+'px';
+  if(rbar2) rbar2.style.height = (3+Math.sin(now/2000+1)*2.5).toFixed(1)+'px';
+
+  // printer LED pulse
+  const prnLed = document.getElementById('prnLed');
+  if(prnLed) prnLed.style.background = Math.floor(now/1500)%2===0 ? '#00ff44' : '#004400';
+
+  // slow screen line width changes (every ~2s)
+  const screenStep = Math.floor(now / 2000);
+  document.querySelectorAll('.sl').forEach((el, i) => {
+    const seed = screenStep * 3 + i * 7;
+    el.style.width = (4 + (seed % 12)) + 'px';
+  });
+
+  // dialog rotation every 5s
+  if(now - lastStep >= STEP_MS) {
+    lastStep = now;
+    stepIndex++;
+    ACTORS.forEach(a => {
+      if(a.convo < 0) return;
+      const convo = CONVOS[a.convo];
+      const idx = stepIndex % convo.exchanges.length;
+      const [speaker, text] = convo.exchanges[idx];
+      const btEl = document.getElementById('bt_'+a.name);
+      if(btEl) {
+        // highlight the speaking bot, dim the listening one
+        const bbEl = document.getElementById('bb_'+a.name);
+        if(speaker === a.name) {
+          if(bbEl) bbEl.style.borderColor = `${a.color}66`;
+          btEl.textContent = text;
+        } else {
+          if(bbEl) bbEl.style.borderColor = 'rgba(79,163,255,0.14)';
+          // show previous line for the other side
+          const prevIdx = (stepIndex - 1 + convo.exchanges.length) % convo.exchanges.length;
+          const prev = convo.exchanges[prevIdx];
+          if(prev[0] === a.name) btEl.textContent = prev[1];
+        }
+      }
+    });
+  }
+
+  requestAnimationFrame(tick);
+}
+
+// fix: reset bobPhase only used for sin, don't double-add
+bobPhase = 0;
+lastFrame = Date.now();
+requestAnimationFrame(function loop(now) {
+  const dt = (now - lastFrame) / 1000;
+  lastFrame = now;
+  bobPhase += dt * 7.85; // 2π/0.8s ≈ 7.85 rad/s
+
+  ACTORS.forEach((a,i) => {
+    const el = document.getElementById('cs_'+a.name);
+    if(el) el.style.transform = `translateY(${(Math.sin(bobPhase+i*0.9)*1.5).toFixed(2)}px)`;
+  });
+
+  const ms = Date.now();
+  ['led1','led2','led3','led4'].forEach((id,i)=>{
+    const el=document.getElementById(id);
+    if(el) el.style.background=(Math.floor(ms/1200+i)%2===0)?'#00ff44':'#004400';
+  });
+  const eyeA=(0.7+Math.sin(ms/2000)*0.25).toFixed(2);
+  ['reye1','reye2'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.opacity=eyeA;});
+  const rb=document.getElementById('rbar');const rb2=document.getElementById('rbar2');
+  if(rb)rb.style.height=(4+Math.sin(ms/2500)*3).toFixed(1)+'px';
+  if(rb2)rb2.style.height=(3+Math.sin(ms/2000+1)*2.5).toFixed(1)+'px';
+  const pl=document.getElementById('prnLed');
+  if(pl)pl.style.background=Math.floor(ms/1500)%2===0?'#00ff44':'#004400';
+  const ss=Math.floor(ms/2000);
+  document.querySelectorAll('.sl').forEach((el,i)=>{el.style.width=(4+((ss*3+i*7)%12))+'px';});
+  if(ms-lastStep>=STEP_MS){
+    lastStep=ms; stepIndex++;
+    ACTORS.forEach(a=>{
+      if(a.convo<0)return;
+      const cv=CONVOS[a.convo];
+      const idx=stepIndex%cv.exchanges.length;
+      const [sp,tx]=cv.exchanges[idx];
+      const btEl=document.getElementById('bt_'+a.name);
+      const bbEl=document.getElementById('bb_'+a.name);
+      if(btEl){
+        if(sp===a.name){
+          btEl.textContent=tx;
+          if(bbEl)bbEl.style.borderColor=a.color+'55';
+        } else {
+          const pi=(stepIndex-1+cv.exchanges.length)%cv.exchanges.length;
+          const pv=cv.exchanges[pi];
+          if(pv[0]===a.name)btEl.textContent=pv[1];
+          if(bbEl)bbEl.style.borderColor='rgba(79,163,255,0.14)';
+        }
+      }
+    });
+  }
+  requestAnimationFrame(loop);
+});
+</script>
+</body>
+</html>

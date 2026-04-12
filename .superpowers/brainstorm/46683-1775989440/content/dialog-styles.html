@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Dialog Bubble Styles</title>
+<style>
+  body { background: #050510; color: #cceeff; font-family: 'Courier New', monospace; margin: 0; padding: 20px; }
+  h2 { color: #00ffcc; text-align: center; letter-spacing: 3px; font-size: 18px; margin-bottom: 4px; }
+  .subtitle { color: #446688; text-align: center; font-size: 12px; margin-bottom: 28px; letter-spacing: 1px; }
+
+  .options { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-top: 10px; }
+  .option {
+    border: 1px solid #1a2a4a;
+    border-radius: 4px;
+    padding: 16px;
+    cursor: pointer;
+    background: #080818;
+    transition: border-color 0.2s, background 0.2s;
+    width: 280px;
+    position: relative;
+  }
+  .option:hover { border-color: #0050ff; background: #0a0a22; }
+  .option.selected { border-color: #00ffcc; background: #001a14; }
+  .option .letter {
+    position: absolute; top: 10px; right: 12px;
+    color: #334466; font-size: 11px; letter-spacing: 1px;
+  }
+  .option.selected .letter { color: #00ffcc; }
+  .option h3 { color: #4fa3ff; font-size: 13px; letter-spacing: 2px; margin: 0 0 8px; }
+  .option p { color: #446688; font-size: 11px; margin: 0 0 14px; line-height: 1.5; }
+
+  /* ── Game area preview ── */
+  .game-preview {
+    width: 100%;
+    height: 180px;
+    background: #0d0d14;
+    border: 1px solid #1a2a3a;
+    border-radius: 3px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Floor grid */
+  .game-preview::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(#1c1c2c 1px, transparent 1px),
+      linear-gradient(90deg, #1c1c2c 1px, transparent 1px);
+    background-size: 16px 16px;
+    opacity: 0.5;
+  }
+
+  /* ── Shared character block ── */
+  .char {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .char-body {
+    width: 14px; height: 22px;
+    image-rendering: pixelated;
+    position: relative;
+  }
+  /* pixel art character */
+  .px { position: absolute; }
+
+  /* ─── Style A: Floating tag ─── */
+  .tag-bubble {
+    background: #001a0d;
+    border: 1px solid #00ffcc;
+    border-radius: 2px;
+    padding: 3px 7px;
+    font-size: 9px;
+    color: #00ffcc;
+    white-space: nowrap;
+    margin-bottom: 3px;
+    letter-spacing: 0.5px;
+    position: relative;
+    animation: tagFloat 2s ease-in-out infinite;
+  }
+  .tag-bubble::after {
+    content: '';
+    position: absolute;
+    bottom: -5px; left: 50%;
+    transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid #00ffcc;
+  }
+  @keyframes tagFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }
+
+  /* ─── Style B: HUD panel ─── */
+  .hud-bubble {
+    background: rgba(0,5,20,0.92);
+    border: 1px solid #0050ff;
+    border-radius: 0;
+    padding: 3px 8px;
+    font-size: 9px;
+    color: #4fa3ff;
+    white-space: nowrap;
+    margin-bottom: 3px;
+    letter-spacing: 1px;
+    position: relative;
+    clip-path: polygon(4px 0%, 100% 0%, calc(100% - 4px) 100%, 0% 100%);
+  }
+  .hud-bubble .name { color: #ffffff; font-size: 8px; opacity: 0.6; display: block; margin-bottom: 1px; }
+
+  /* ─── Style C: Chat bubble ─── */
+  .chat-bubble {
+    background: #0d1a2e;
+    border: 1px solid #4fa3ff44;
+    border-radius: 8px 8px 8px 0;
+    padding: 4px 8px;
+    font-size: 9px;
+    color: #cceeff;
+    max-width: 110px;
+    word-wrap: break-word;
+    margin-bottom: 4px;
+    line-height: 1.4;
+    position: relative;
+    text-align: left;
+  }
+  .chat-bubble .chat-name { color: #4fa3ff; font-size: 8px; display: block; margin-bottom: 2px; }
+
+  /* character silhouettes for preview */
+  .char-a { left: 20px; bottom: 30px; }
+  .char-b { left: 100px; bottom: 30px; }
+  .char-c { left: 180px; bottom: 30px; }
+  .sil {
+    width: 14px; height: 22px; position: relative; margin-top: 2px;
+  }
+  .sil-head { position: absolute; top: 0; left: 2px; width: 10px; height: 8px; }
+  .sil-body { position: absolute; top: 7px; left: 1px; width: 12px; height: 10px; }
+  .sil-legs { position: absolute; top: 16px; left: 2px; width: 5px; height: 6px; }
+  .sil-legs2 { position: absolute; top: 16px; left: 7px; width: 5px; height: 6px; }
+
+  /* Name labels under chars */
+  .char-label { font-size: 7px; color: #336655; letter-spacing: 1px; margin-top: 1px; }
+
+  /* Selection state */
+  .option.selected .game-preview { border-color: #00ffcc44; }
+
+  /* bottom note */
+  .note { text-align: center; color: #334466; font-size: 10px; margin-top: 20px; letter-spacing: 1px; }
+</style>
+</head>
+<body>
+
+<h2>DIALOG BUBBLE STYLES</h2>
+<p class="subtitle">How should character thoughts appear above each head?</p>
+
+<div class="options">
+
+  <!-- OPTION A -->
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <span class="letter">A</span>
+    <h3>FLOATING TAGS</h3>
+    <p>Minimal neon tag above head, floats up and down. Clean, game-like. Shows current activity only.</p>
+    <div class="game-preview">
+      <!-- Char 1 -->
+      <div class="char char-a" style="position:absolute;bottom:28px;left:18px;display:flex;flex-direction:column;align-items:center;">
+        <div class="tag-bubble">Processing query...</div>
+        <div class="sil">
+          <div class="sil-head" style="background:#0050ff;border-radius:2px 2px 0 0;"></div>
+          <div class="sil-body" style="background:#0040cc;"></div>
+          <div class="sil-legs" style="background:#003399;"></div>
+          <div class="sil-legs2" style="background:#003399;"></div>
+        </div>
+        <div class="char-label">SAVVY</div>
+      </div>
+      <!-- Char 2 -->
+      <div class="char char-b" style="position:absolute;bottom:28px;left:100px;display:flex;flex-direction:column;align-items:center;">
+        <div class="tag-bubble" style="border-color:#4fa3ff;color:#4fa3ff;background:#001428;">Writing docs</div>
+        <div class="sil">
+          <div class="sil-head" style="background:#4fa3ff;border-radius:2px 2px 0 0;"></div>
+          <div class="sil-body" style="background:#3a88dd;"></div>
+          <div class="sil-legs" style="background:#2266bb;"></div>
+          <div class="sil-legs2" style="background:#2266bb;"></div>
+        </div>
+        <div class="char-label">CLAUDE</div>
+      </div>
+      <!-- Char 3 -->
+      <div class="char char-c" style="position:absolute;bottom:28px;left:185px;display:flex;flex-direction:column;align-items:center;">
+        <div class="tag-bubble" style="border-color:#ff8c00;color:#ff8c00;background:#1a0800;">API call running</div>
+        <div class="sil">
+          <div class="sil-head" style="background:#ff8c00;border-radius:2px 2px 0 0;"></div>
+          <div class="sil-body" style="background:#cc7000;"></div>
+          <div class="sil-legs" style="background:#994f00;"></div>
+          <div class="sil-legs2" style="background:#994f00;"></div>
+        </div>
+        <div class="char-label">GOOGLE</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OPTION B -->
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <span class="letter">B</span>
+    <h3>HUD PANELS</h3>
+    <p>Skewed HUD-style readout above each character. Shows name + status. Tech/military aesthetic.</p>
+    <div class="game-preview">
+      <div style="position:absolute;bottom:28px;left:18px;display:flex;flex-direction:column;align-items:center;">
+        <div class="hud-bubble"><span class="name">SAVVY</span>Processing query...</div>
+        <div class="sil">
+          <div class="sil-head" style="background:#0050ff;border-radius:2px 2px 0 0;"></div>
+          <div class="sil-body" style="background:#0040cc;"></div>
+          <div class="sil-legs" style="background:#003399;"></div>
+          <div class="sil-legs2" style="background:#003399;"></div>
+        </div>
+        <div class="char-label">SAVVY</div>
+      </div>
+      <div style="position:absolute;bottom:28px;left:100px;display:flex;flex-direction:column;align-items:center;">
+        <div class="hud-bubble" style="border-color:#4fa3ff;color:#88ccff;"><span class="name">CLAUDE</span>Writing docs</div>
+        <div class="sil">
+          <div class="sil-head" style="background:#4fa3ff;border-radius:2px 2px 0 0;"></div>
+          <div class="sil-body" style="background:#3a88dd;"></div>
+          <div class="sil-legs" style="background:#2266bb;"></div>
+          <div class="sil-legs2" style="background:#2266bb;"></div>
+        </div>
+        <div class="char-label">CLAUDE</div>
+      </div>
+      <div style="position:absolute;bottom:28px;left:185px;display:flex;flex-direction:column;align-items:center;">
+        <div class="hud-bubble" style="border-color:#ff8c00;color:#ffaa44;"><span class="name">GOOGLE</span>API call running</div>
+        <div class="sil">
+          <div class="sil-head" style="background:#ff8c00;border-radius:2px 2px 0 0;"></div>
+          <div class="sil-body" style="background:#cc7000;"></div>
+          <div class="sil-legs" style="background:#994f00;"></div>
+          <div class="sil-legs2" style="background:#994f00;"></div>
+        </div>
+        <div class="char-label">GOOGLE</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OPTION C -->
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <span class="letter">C</span>
+    <h3>CHAT BUBBLES</h3>
+    <p>Comic-style speech bubbles with name + rotating dialog lines. More expressive, feels alive.</p>
+    <div class="game-preview">
+      <div style="position:absolute;bottom:28px;left:12px;display:flex;flex-direction:column;align-items:flex-start;">
+        <div class="chat-bubble"><span class="chat-name">SAVVY</span>Processing 14 queries...</div>
+        <div class="sil" style="margin-left:4px;">
+          <div class="sil-head" style="background:#0050ff;border-radius:2px 2px 0 0;"></div>
+          <div class="sil-body" style="background:#0040cc;"></div>
+          <div class="sil-legs" style="background:#003399;"></div>
+          <div class="sil-legs2" style="background:#003399;"></div>
+        </div>
+        <div class="char-label" style="margin-left:4px;">SAVVY</div>
+      </div>
+      <div style="position:absolute;bottom:28px;left:110px;display:flex;flex-direction:column;align-items:flex-start;">
+        <div class="chat-bubble" style="border-color:#4fa3ff44;"><span class="chat-name" style="color:#88ccff;">CLAUDE</span>Reviewing PR #42...</div>
+        <div class="sil" style="margin-left:4px;">
+          <div class="sil-head" style="background:#4fa3ff;border-radius:2px 2px 0 0;"></div>
+          <div class="sil-body" style="background:#3a88dd;"></div>
+          <div class="sil-legs" style="background:#2266bb;"></div>
+          <div class="sil-legs2" style="background:#2266bb;"></div>
+        </div>
+        <div class="char-label" style="margin-left:4px;">CLAUDE</div>
+      </div>
+      <div style="position:absolute;bottom:28px;left:200px;display:flex;flex-direction:column;align-items:flex-start;">
+        <div class="chat-bubble" style="border-color:#ff8c0044;"><span class="chat-name" style="color:#ff8c00;">GOOGLE</span>API latency: 42ms</div>
+        <div class="sil" style="margin-left:4px;">
+          <div class="sil-head" style="background:#ff8c00;border-radius:2px 2px 0 0;"></div>
+          <div class="sil-body" style="background:#cc7000;"></div>
+          <div class="sil-legs" style="background:#994f00;"></div>
+          <div class="sil-legs2" style="background:#994f00;"></div>
+        </div>
+        <div class="char-label" style="margin-left:4px;">GOOGLE</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<p class="note">Click an option to select · respond in terminal when ready</p>
+
+<script>
+function toggleSelect(el) {
+  document.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  if (window.__recordChoice) window.__recordChoice(el.dataset.choice, el.querySelector('h3').textContent);
+}
+</script>
+</body>
+</html>

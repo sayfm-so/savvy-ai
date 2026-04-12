@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Dialog Preview</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #050510; color: #cceeff; font-family: 'Courier New', monospace; padding: 20px; }
+h2 { color: #00ffcc; text-align: center; letter-spacing: 3px; font-size: 16px; margin-bottom: 4px; }
+.subtitle { color: #446688; text-align: center; font-size: 11px; margin-bottom: 20px; letter-spacing: 1px; }
+
+/* ── Game canvas ── */
+.game-canvas {
+  width: 100%;
+  max-width: 860px;
+  height: 340px;
+  background: #0d0d14;
+  border: 1px solid #1a2a4a;
+  margin: 0 auto;
+  position: relative;
+  overflow: hidden;
+}
+.game-canvas::before {
+  content:'';
+  position:absolute;inset:0;
+  background-image: linear-gradient(#1c1c2c 1px,transparent 1px), linear-gradient(90deg,#1c1c2c 1px,transparent 1px);
+  background-size: 16px 16px;
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* Room */
+.room {
+  position: absolute;
+  border: 1px solid #0050ff88;
+}
+.room-label {
+  position: absolute;
+  top: 5px; left: 8px;
+  font-size: 9px;
+  letter-spacing: 2px;
+  opacity: 0.8;
+}
+
+/* Character stack */
+.char-wrap {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 10;
+}
+
+/* Activity badge */
+.activity-badge {
+  background: #050510ee;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  font-size: 8px;
+  padding: 1px 5px;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+  opacity: 0.85;
+}
+
+/* Chat bubble */
+.bubble {
+  background: #0d1a2e;
+  border: 1px solid #4fa3ff33;
+  border-radius: 8px 8px 8px 2px;
+  padding: 5px 8px;
+  font-size: 9px;
+  color: #cceeff;
+  max-width: 140px;
+  word-break: break-word;
+  line-height: 1.5;
+  margin-bottom: 3px;
+  position: relative;
+  animation: pop 0.3s ease;
+}
+@keyframes pop { from{transform:scale(0.8);opacity:0} to{transform:scale(1);opacity:1} }
+.bubble .bname { display: block; font-size: 8px; margin-bottom: 2px; font-weight: bold; }
+.bubble.right {
+  border-radius: 8px 8px 2px 8px;
+  align-self: flex-end;
+}
+
+/* Character pixel body */
+.px-char {
+  width: 14px; height: 22px;
+  position: relative;
+  flex-shrink: 0;
+}
+.px-head { position:absolute; top:0; left:2px; width:10px; height:7px; border-radius:2px 2px 0 0; }
+.px-body { position:absolute; top:6px; left:1px; width:12px; height:9px; }
+.px-legs { position:absolute; top:14px; left:2px; width:5px; height:8px; }
+.px-legs2 { position:absolute; top:14px; left:7px; width:5px; height:8px; }
+.px-shadow { position:absolute; bottom:-2px; left:1px; width:12px; height:3px; background:#000; border-radius:50%; opacity:0.3; }
+
+.char-name { font-size: 7px; color: #334455; letter-spacing: 1px; margin-top: 1px; }
+
+/* Status dot */
+.dot { width:4px; height:4px; border-radius:50%; display:inline-block; margin-right:3px; vertical-align:middle; }
+
+/* ── Two-bot conversation panel ── */
+.convo-panel {
+  position: absolute;
+  bottom: 10px; right: 10px;
+  width: 200px;
+  background: #06080f;
+  border: 1px solid #0050ff55;
+  border-radius: 3px;
+  padding: 8px;
+  font-size: 9px;
+}
+.convo-title { color: #0050ff; letter-spacing: 2px; font-size: 8px; margin-bottom: 6px; border-bottom: 1px solid #0050ff33; padding-bottom: 4px; }
+.convo-line { margin-bottom: 6px; display: flex; gap: 5px; align-items: flex-start; }
+.convo-avatar { width: 14px; height: 14px; border-radius: 2px; flex-shrink: 0; margin-top: 1px; }
+.convo-text { color: #aabbcc; line-height: 1.4; }
+.convo-speaker { display: block; font-size: 8px; margin-bottom: 1px; }
+
+/* ── Legend ── */
+.legend {
+  max-width: 860px; margin: 12px auto 0;
+  display: flex; gap: 16px; flex-wrap: wrap; justify-content: center;
+}
+.legend-item { font-size: 10px; color: #446688; display: flex; align-items: center; gap: 5px; }
+.legend-dot { width: 8px; height: 8px; border-radius: 1px; }
+</style>
+</head>
+<body>
+
+<h2>DIALOG SYSTEM PREVIEW</h2>
+<p class="subtitle">Activity badge + chat bubbles + bot conversations</p>
+
+<div class="game-canvas">
+
+  <!-- R&D Room -->
+  <div class="room" style="left:5px;top:5px;width:260px;height:150px;background:#0d1a2e22;">
+    <span class="room-label" style="color:#4fa3ff;">R&D LAB</span>
+  </div>
+
+  <!-- AI Core -->
+  <div class="room" style="left:275px;top:5px;width:200px;height:150px;background:#1a0d2e22;">
+    <span class="room-label" style="color:#aa66ff;">AI CORE</span>
+  </div>
+
+  <!-- OPS -->
+  <div class="room" style="left:485px;top:5px;width:180px;height:150px;background:#2e1a0d22;">
+    <span class="room-label" style="color:#ff8c00;">OPS COMMAND</span>
+  </div>
+
+  <!-- Lobby -->
+  <div class="room" style="left:5px;top:165px;width:660px;height:100px;background:#11111822;">
+    <span class="room-label" style="color:#4fa3ff88;">LOBBY</span>
+  </div>
+
+  <!-- SAVVY — AI Core, working -->
+  <div class="char-wrap" style="left:320px;top:30px;">
+    <div class="bubble">
+      <span class="bname" style="color:#0080ff;">SAVVY</span>
+      Just finished processing 14 queries. The RAG index is looking fresh 🔵
+    </div>
+    <div class="activity-badge" style="color:#00ffcc;"><span class="dot" style="background:#00ffcc;"></span>WORKING</div>
+    <div class="px-char">
+      <div class="px-head" style="background:#0050ff;"></div>
+      <div class="px-body" style="background:#0040cc;"></div>
+      <div class="px-legs" style="background:#003399;"></div>
+      <div class="px-legs2" style="background:#003399;"></div>
+      <div class="px-shadow"></div>
+    </div>
+    <div class="char-name">SAVVY</div>
+  </div>
+
+  <!-- CLAUDE — R&D Lab, thinking -->
+  <div class="char-wrap" style="left:80px;top:30px;">
+    <div class="bubble">
+      <span class="bname" style="color:#4fa3ff;">CLAUDE</span>
+      PR #42 has 3 unresolved comments. Going in circles a bit...
+    </div>
+    <div class="activity-badge" style="color:#ffee44;"><span class="dot" style="background:#ffee44;"></span>THINKING</div>
+    <div class="px-char">
+      <div class="px-head" style="background:#4fa3ff;"></div>
+      <div class="px-body" style="background:#3a88dd;"></div>
+      <div class="px-legs" style="background:#2266bb;"></div>
+      <div class="px-legs2" style="background:#2266bb;"></div>
+      <div class="px-shadow"></div>
+    </div>
+    <div class="char-name">CLAUDE</div>
+  </div>
+
+  <!-- GOOGLE — OPS, FIXED: no more "API issue" -->
+  <div class="char-wrap" style="left:530px;top:30px;">
+    <div class="bubble">
+      <span class="bname" style="color:#ff8c00;">GOOGLE</span>
+      Monitoring latency across 6 endpoints. All green so far.
+    </div>
+    <div class="activity-badge" style="color:#00cc88;"><span class="dot" style="background:#00cc88;"></span>WORKING</div>
+    <div class="px-char">
+      <div class="px-head" style="background:#ff8c00;"></div>
+      <div class="px-body" style="background:#cc7000;"></div>
+      <div class="px-legs" style="background:#994f00;"></div>
+      <div class="px-legs2" style="background:#994f00;"></div>
+      <div class="px-shadow"></div>
+    </div>
+    <div class="char-name">GOOGLE</div>
+  </div>
+
+  <!-- DEV-1 — Lobby, walking -->
+  <div class="char-wrap" style="left:120px;top:185px;">
+    <div class="bubble">
+      <span class="bname" style="color:#00cc88;">DEV-1</span>
+      Stack trace had a typo. Classic.
+    </div>
+    <div class="activity-badge" style="color:#88ffcc;"><span class="dot" style="background:#88ffcc;"></span>WALKING</div>
+    <div class="px-char">
+      <div class="px-head" style="background:#00cc88;"></div>
+      <div class="px-body" style="background:#009966;"></div>
+      <div class="px-legs" style="background:#006644;"></div>
+      <div class="px-legs2" style="background:#006644;"></div>
+      <div class="px-shadow"></div>
+    </div>
+    <div class="char-name">DEV-1</div>
+  </div>
+
+  <!-- ROBOT-E — Lobby -->
+  <div class="char-wrap" style="left:280px;top:185px;">
+    <div class="bubble">
+      <span class="bname" style="color:#00ffcc;">ROBOT-E</span>
+      Joint sweep complete. 24/24 axes nominal.
+    </div>
+    <div class="activity-badge" style="color:#00ffcc;"><span class="dot" style="background:#00ffcc;"></span>WORKING</div>
+    <div class="px-char">
+      <div class="px-head" style="background:#334455;"></div>
+      <div class="px-body" style="background:#223344;"></div>
+      <div class="px-legs" style="background:#112233;"></div>
+      <div class="px-legs2" style="background:#112233;"></div>
+      <div class="px-shadow"></div>
+    </div>
+    <div class="char-name">ROBOT-E</div>
+  </div>
+
+  <!-- Conversation side panel: SAVVY ↔ CLAUDE -->
+  <div class="convo-panel">
+    <div class="convo-title">⬡ ACTIVE CONVO</div>
+    <div class="convo-line">
+      <div class="convo-avatar" style="background:#0050ff;"></div>
+      <div class="convo-text">
+        <span class="convo-speaker" style="color:#4fa3ff;">SAVVY</span>
+        Hey Claude, did you see the new RAG results?
+      </div>
+    </div>
+    <div class="convo-line">
+      <div class="convo-avatar" style="background:#4fa3ff;"></div>
+      <div class="convo-text">
+        <span class="convo-speaker" style="color:#88ccff;">CLAUDE</span>
+        Yeah — retrieval precision up 12%. Clean.
+      </div>
+    </div>
+    <div class="convo-line">
+      <div class="convo-avatar" style="background:#0050ff;"></div>
+      <div class="convo-text">
+        <span class="convo-speaker" style="color:#4fa3ff;">SAVVY</span>
+        Rami's going to love this.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#00ffcc;"></div>Activity badge — always visible, color = state</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#0d1a2e;border:1px solid #4fa3ff44;"></div>Chat bubble — rotates every few seconds</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#06080f;border:1px solid #0050ff55;"></div>Convo panel — shows active bot-to-bot chat</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#ff000033;border:1px solid #ff4444;"></div>Google "API issue" bug — fixed ✓</div>
+</div>
+
+<p style="text-align:center;color:#334466;font-size:10px;margin-top:14px;letter-spacing:1px;">Does this feel right? Let me know in terminal.</p>
+
+</body>
+</html>

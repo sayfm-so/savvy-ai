@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Office Preview v2</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #050510; color: #cceeff; font-family: 'Courier New', monospace; padding: 16px; }
+h2 { color: #00ffcc; text-align: center; letter-spacing: 3px; font-size: 15px; margin-bottom: 3px; }
+.sub { color: #446688; text-align: center; font-size: 10px; margin-bottom: 14px; letter-spacing: 1px; }
+canvas { display: block; margin: 0 auto; border: 1px solid #1a2a4a; }
+.note { text-align:center; color:#334466; font-size:10px; margin-top:10px; letter-spacing:1px; }
+</style>
+</head>
+<body>
+<h2>SAVVY AI — OFFICE PREVIEW v2</h2>
+<p class="sub">Slowed animations · agents talking to each other</p>
+<canvas id="c" width="860" height="560"></canvas>
+<p class="note">Let me know what feels right in terminal</p>
+
+<script>
+const cv = document.getElementById('c');
+const cx = cv.getContext('2d');
+const W = 860, H = 560, TILE = 16;
+
+// time in seconds, updated each frame
+let t = 0;
+let last = performance.now();
+
+// ── Rooms ──
+const rooms = [
+  { x:5,   y:5,   w:230, h:170, bg:'#0d1a2e22', label:'R&D LAB',        lc:'#4fa3ff' },
+  { x:245, y:5,   w:185, h:170, bg:'#1a0d2e22', label:'AI CORE',         lc:'#aa66ff' },
+  { x:440, y:5,   w:175, h:170, bg:'#0d2e1a22', label:'INFRA',           lc:'#00cc88' },
+  { x:625, y:5,   w:230, h:170, bg:'#2e1a0d22', label:'OPS COMMAND',     lc:'#ff8c00' },
+  { x:5,   y:185, w:380, h:185, bg:'#1a1a0d22', label:'DESIGN STUDIO',   lc:'#ffee44' },
+  { x:395, y:185, w:215, h:185, bg:'#2e0d0d22', label:'LEGAL WING',      lc:'#ff4466' },
+  { x:620, y:185, w:235, h:185, bg:'#0d2e2e22', label:'ROBOTICS LAB',    lc:'#00ffcc' },
+  { x:5,   y:380, w:850, h:170, bg:'#11111822', label:'LOBBY — SEOUL HQ',lc:'#4fa3ff88' },
+];
+
+// ── Conversations: pairs of agents, lines alternate A→B→A→B ──
+// Each convo has a cycle: show lineA for ~5s, then lineB for ~5s, repeat
+const CONVOS = [
+  {
+    a: 'SAVVY', b: 'CLAUDE',
+    lines: [
+      { speaker:'SAVVY',  text:'Hey Claude, RAG precision is up 12% today.' },
+      { speaker:'CLAUDE', text:'Saw that. The new chunking strategy paid off.' },
+      { speaker:'SAVVY',  text:'Rami's going to love the benchmark report.' },
+      { speaker:'CLAUDE', text:'Sending it over now. Clean numbers.' },
+    ]
+  },
+  {
+    a: 'GOOGLE', b: 'OPS-1',
+    lines: [
+      { speaker:'GOOGLE', text:'All 6 endpoints nominal. 42ms average latency.' },
+      { speaker:'OPS-1',  text:'Nice. CPU sitting at 34%, plenty of headroom.' },
+      { speaker:'GOOGLE', text:'Seoul HQ traffic spike expected around 3pm.' },
+      { speaker:'OPS-1',  text:'Already scaled up. We're good.' },
+    ]
+  },
+  {
+    a: 'DEV-1', b: 'DEV-2',
+    lines: [
+      { speaker:'DEV-1', text:'Stack trace was a typo in line 47. Classic.' },
+      { speaker:'DEV-2', text:'I wrote 12 tests for that module. 11 passing.' },
+      { speaker:'DEV-1', text:'What's the failing one?' },
+      { speaker:'DEV-2', text:'Edge case with empty arrays. Fixing it now.' },
+    ]
+  },
+];
+
+// Each actor: which convo they're in (null = solo), and which line index
+const actors = [
+  { name:'SAVVY',   x:300, y:120, color:'#0050ff', convo:0, side:'a', solo:'Processing 14 queries...', state:'WORKING',   sc:'#00ffcc' },
+  { name:'CLAUDE',  x:100, y:95,  color:'#4fa3ff', convo:0, side:'b', solo:'Reviewing PR #42.',         state:'THINKING',  sc:'#ffee44' },
+  { name:'GOOGLE',  x:700, y:95,  color:'#ff8c00', convo:1, side:'a', solo:'Monitoring 6 endpoints.',   state:'WORKING',   sc:'#00ffcc' },
+  { name:'DEV-1',   x:100, y:300, color:'#00cc88', convo:2, side:'a', solo:'Debugging loop in auth.',   state:'WORKING',   sc:'#00ffcc' },
+  { name:'DEV-2',   x:450, y:300, color:'#cc44aa', convo:2, side:'b', solo:'Writing unit tests.',       state:'REVIEWING', sc:'#aaccff' },
+  { name:'OPS-1',   x:560, y:90,  color:'#ffcc00', convo:1, side:'b', solo:'CPU 34%% — all green.',     state:'WORKING',   sc:'#00ffcc' },
+  { name:'ROBOT-E', x:710, y:310, color:'#44aaff', convo:null, side:null, solo:'Joint sweep: 24/24 OK.',state:'WORKING',   sc:'#00ffcc' },
+];
+
+// ── Helpers ──
+function hexA(h, a) {
+  h = h.replace('#','').replace(/22$/,'');
+  if(h.length===3) h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  const n = parseInt(h.substring(0,6),16);
+  return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
+}
+function roundRect(x, y, w, h, r, fill, stroke) {
+  cx.beginPath();
+  cx.moveTo(x+r,y); cx.lineTo(x+w-r,y); cx.arcTo(x+w,y,x+w,y+r,r);
+  cx.lineTo(x+w,y+h-r); cx.arcTo(x+w,y+h,x+w-r,y+h,r);
+  cx.lineTo(x+r,y+h); cx.arcTo(x,y+h,x,y+h-r,r);
+  cx.lineTo(x,y+r); cx.arcTo(x,y,x+r,y,r);
+  cx.closePath();
+  if(fill){ cx.fillStyle=fill; cx.fill(); }
+  if(stroke){ cx.strokeStyle=stroke; cx.lineWidth=1; cx.stroke(); }
+}
+
+// ── Draw functions ──
+function drawGrid() {
+  cx.fillStyle='#050510'; cx.fillRect(0,0,W,H);
+  cx.strokeStyle='#1c1c2c'; cx.lineWidth=0.5;
+  cx.globalAlpha=0.2;
+  for(let x=0;x<W;x+=TILE){cx.beginPath();cx.moveTo(x,0);cx.lineTo(x,H);cx.stroke();}
+  for(let y=0;y<H;y+=TILE){cx.beginPath();cx.moveTo(0,y);cx.lineTo(W,y);cx.stroke();}
+  cx.globalAlpha=1;
+}
+function drawRoom(r) {
+  cx.fillStyle=hexA(r.bg,0.95); cx.fillRect(r.x,r.y,r.w,r.h);
+  for(let tx=r.x;tx<r.x+r.w;tx+=TILE)
+    for(let ty=r.y;ty<r.y+r.h;ty+=TILE){
+      const alt=((Math.floor(tx/TILE)+Math.floor(ty/TILE))%2===0);
+      cx.fillStyle=alt?'rgba(255,255,255,0.012)':'rgba(0,0,0,0.015)';
+      cx.fillRect(tx,ty,TILE,TILE);
+    }
+  cx.strokeStyle=hexA('#0050ff',0.4); cx.lineWidth=1.5; cx.strokeRect(r.x,r.y,r.w,r.h);
+  [[0,0],[r.w-4,0],[0,r.h-4],[r.w-4,r.h-4]].forEach(([dx,dy])=>{
+    cx.fillStyle=hexA('#0050ff',0.75); cx.fillRect(r.x+dx,r.y+dy,4,4);
+  });
+  cx.font='bold 10px Courier New'; cx.fillStyle=r.lc; cx.globalAlpha=0.85;
+  cx.fillText(r.label,r.x+8,r.y+16); cx.globalAlpha=1;
+}
+function drawDesk(x,y,col,extra) {
+  // slow screen flicker: changes every ~3s
+  const screenOn = Math.sin(t*0.3 + x*0.05) > -0.9;
+  cx.fillStyle='#1a1a2e'; cx.fillRect(x,y,52,30);
+  cx.strokeStyle='#2a2a4e'; cx.lineWidth=0.8; cx.strokeRect(x,y,52,30);
+  cx.fillStyle='#111122'; cx.fillRect(x+2,y+28,6,4); cx.fillRect(x+44,y+28,6,4);
+  // monitor 1
+  cx.fillStyle='#0d0d1a'; cx.fillRect(x+4,y+2,18,14);
+  if(screenOn){
+    cx.fillStyle=hexA(col,0.12); cx.fillRect(x+5,y+3,16,12);
+    // slow scrolling lines — change every 2s
+    const seed = Math.floor(t*0.5)*7 + Math.floor(x/10);
+    const lw1 = 4+(seed%11), lw2 = 3+((seed+3)%9), lw3 = 6+((seed+6)%7);
+    cx.fillStyle=hexA(col,0.7);
+    cx.fillRect(x+6,y+5,lw1,1.5);
+    cx.fillRect(x+6,y+8,lw2,1.5);
+    cx.fillRect(x+6,y+11,lw3,1.5);
+  } else {
+    cx.fillStyle=hexA(col,0.08); cx.fillRect(x+5,y+3,16,12);
+  }
+  cx.fillStyle='#1a1a2e'; cx.fillRect(x+12,y+15,3,3);
+  // monitor 2
+  cx.fillStyle='#0d0d1a'; cx.fillRect(x+26,y+2,14,10);
+  cx.fillStyle=hexA('#ff8c00',0.08); cx.fillRect(x+27,y+3,12,8);
+  const seed2=Math.floor(t*0.4)*5+Math.floor(y/8);
+  cx.fillStyle=hexA('#ff8c00',0.5);
+  cx.fillRect(x+28,y+5,(3+(seed2%9)),1.5);
+  cx.fillRect(x+28,y+8,(2+((seed2+2)%7)),1.5);
+  // keyboard
+  cx.fillStyle='#13132a'; cx.fillRect(x+3,y+18,22,5);
+  for(let ki=0;ki<3;ki++) for(let kj=0;kj<6;kj++){
+    cx.fillStyle='rgba(255,255,255,0.05)'; cx.fillRect(x+4+kj*3.5,y+19+ki*1.5,3,1);
+  }
+  // mouse
+  cx.fillStyle='#13132a'; cx.beginPath(); cx.ellipse(x+30,y+22,3,4,0,0,Math.PI*2); cx.fill();
+  // extras
+  if(extra==='coffee'){
+    cx.fillStyle='#3d2000'; cx.fillRect(x+44,y+18,6,8);
+    cx.fillStyle='#5a3300'; cx.fillRect(x+44,y+18,6,2);
+    // slow steam — every 4s
+    if(Math.sin(t*0.8+x*0.1)>0.3){
+      cx.strokeStyle='rgba(255,255,255,0.08)'; cx.lineWidth=0.7;
+      cx.beginPath(); cx.moveTo(x+47,y+17); cx.bezierCurveTo(x+44,y+13,x+50,y+11,x+47,y+8); cx.stroke();
+    }
+  } else if(extra==='notebook'){
+    cx.fillStyle='#1a2a1a'; cx.fillRect(x+44,y+18,7,9);
+    cx.strokeStyle='#226622'; cx.lineWidth=0.5; cx.strokeRect(x+44,y+18,7,9);
+    cx.fillStyle=hexA('#00cc88',0.3);
+    for(let ni=0;ni<3;ni++) cx.fillRect(x+45,y+20+ni*2.5,5,1);
+  } else if(extra==='plant'){
+    cx.fillStyle='#663311'; cx.fillRect(x+44,y+22,5,6);
+    cx.fillStyle='#226622'; cx.beginPath(); cx.arc(x+46,y+20,4,0,Math.PI*2); cx.fill();
+  }
+}
+function drawServer(x,y){
+  cx.fillStyle='#1e2e3e'; cx.fillRect(x,y,20,90);
+  cx.strokeStyle='#2a3a4a'; cx.lineWidth=0.5; cx.strokeRect(x,y,20,90);
+  cx.fillStyle='#00aaff'; cx.fillRect(x,y,20,2);
+  for(let i=0;i<5;i++){
+    cx.fillStyle='#111e2a'; cx.fillRect(x+2,y+6+i*16,16,11);
+    // slow LED blink — ~1s period
+    const on=(Math.sin(t*1.2+i*1.5+x*0.05)>0);
+    cx.fillStyle=on?'#00ff44':'#00aaff'; cx.globalAlpha=on?0.9:0.45;
+    cx.fillRect(x+16,y+8+i*16,2,2); cx.globalAlpha=1;
+    cx.fillStyle=hexA('#00aaff',0.15); cx.fillRect(x+3,y+9+i*16,10,1); cx.fillRect(x+3,y+12+i*16,7,1);
+  }
+}
+function drawWhiteboard(x,y,w,h,col){
+  cx.fillStyle='#101e30'; cx.fillRect(x,y,w,h);
+  cx.strokeStyle=hexA(col,0.45); cx.lineWidth=1; cx.strokeRect(x,y,w,h);
+  cx.fillStyle='#0a1428'; cx.fillRect(x,y,w,3);
+  cx.strokeStyle=hexA(col,0.15); cx.lineWidth=0.5;
+  for(let ly=y+8;ly<y+h-4;ly+=6){
+    const lw=(Math.sin(ly*0.3)*0.5+0.5)*(w-12);
+    cx.beginPath(); cx.moveTo(x+4,ly); cx.lineTo(x+4+lw,ly); cx.stroke();
+  }
+  cx.fillStyle=hexA(col,0.6); cx.fillRect(x+3,y+4,3,3);
+}
+function drawPlant(x,y,big){
+  const s=big?1.4:1;
+  cx.fillStyle='#7a4422'; cx.fillRect(x+4*s,y+14*s,12*s,8*s);
+  cx.strokeStyle='#553311'; cx.lineWidth=0.5; cx.strokeRect(x+4*s,y+14*s,12*s,8*s);
+  cx.fillStyle='#2a7a2a';
+  cx.beginPath(); cx.moveTo(x+10*s,y); cx.lineTo(x+2*s,y+16*s); cx.lineTo(x+18*s,y+16*s); cx.closePath(); cx.fill();
+  cx.fillStyle='#1a4a1a'; cx.beginPath(); cx.arc(x+10*s,y+8*s,7*s,0,Math.PI*2); cx.fill();
+  cx.fillStyle='#3a9a3a'; cx.beginPath(); cx.arc(x+10*s,y+7*s,4*s,0,Math.PI*2); cx.fill();
+}
+function drawCoffeeMachine(x,y){
+  cx.fillStyle='#1a1a2e'; cx.fillRect(x,y,22,32);
+  cx.strokeStyle='#2a2a4e'; cx.lineWidth=0.8; cx.strokeRect(x,y,22,32);
+  cx.fillStyle='#001420'; cx.fillRect(x+3,y+3,10,7);
+  cx.fillStyle=hexA('#00ffcc',0.5); cx.font='4px Courier New'; cx.fillText('READY',x+4,y+8);
+  ['#0050ff','#00cc88','#ffee44'].forEach((bc,bi)=>{
+    cx.fillStyle=hexA(bc,0.75); cx.beginPath(); cx.arc(x+16,y+5+bi*4,2,0,Math.PI*2); cx.fill();
+  });
+  cx.fillStyle='#111122'; cx.fillRect(x+8,y+16,6,8);
+  cx.fillStyle='#0d0d1a'; cx.fillRect(x+4,y+25,14,6);
+  cx.fillStyle='#3d2000'; cx.fillRect(x+8,y+26,6,5);
+  if(Math.sin(t*0.6+x*0.1)>0.4){
+    cx.strokeStyle='rgba(255,255,255,0.08)'; cx.lineWidth=0.5;
+    cx.beginPath(); cx.moveTo(x+10,y+25); cx.bezierCurveTo(x+8,y+22,x+12,y+20,x+10,y+17); cx.stroke();
+  }
+}
+function drawBookshelf(x,y,w,h){
+  cx.fillStyle='#1a1220'; cx.fillRect(x,y,w,h);
+  cx.strokeStyle='#2a1a30'; cx.lineWidth=0.5; cx.strokeRect(x,y,w,h);
+  const bc=['#0050ff','#ff4466','#00cc88','#ffee44','#4fa3ff','#cc44aa','#ff8c00','#44aaff'];
+  [2,3,4].forEach((row,ri)=>{
+    const sy=y+4+ri*15;
+    cx.fillStyle='#111118'; cx.fillRect(x+1,sy+12,w-2,1);
+    let bxi=x+2;
+    for(let bi=0;bi<row+3;bi++){
+      const bw=3+(bi%3);
+      cx.fillStyle=hexA(bc[(ri*4+bi)%bc.length],0.8); cx.fillRect(bxi,sy,bw,11);
+      cx.fillStyle='rgba(0,0,0,0.2)'; cx.fillRect(bxi,sy,1,11);
+      bxi+=bw+1;
+    }
+  });
+}
+function drawPrinter(x,y){
+  cx.fillStyle='#1e1e30'; cx.fillRect(x,y,32,20);
+  cx.strokeStyle='#2a2a44'; cx.lineWidth=0.5; cx.strokeRect(x,y,32,20);
+  cx.fillStyle='#111120'; cx.fillRect(x+4,y+4,24,4);
+  cx.fillStyle=Math.sin(t*1.5)>0?'#00ff44':'#004400';
+  cx.beginPath(); cx.arc(x+28,y+3,2,0,Math.PI*2); cx.fill();
+  cx.fillStyle='#e8e8e8'; cx.fillRect(x+6,y+13,20,1);
+  cx.fillStyle='#cccccc'; cx.fillRect(x+6,y+15,15,1);
+  cx.fillStyle='rgba(255,255,255,0.18)'; cx.font='4px Courier New'; cx.fillText('PRINT',x+9,y+10);
+}
+function drawReceptionDesk(x,y){
+  cx.fillStyle='#1a1a3a'; cx.fillRect(x,y,130,45);
+  cx.strokeStyle='#0050ff'; cx.lineWidth=1; cx.strokeRect(x,y,130,45);
+  cx.fillStyle='#22224a'; cx.fillRect(x,y,130,8);
+  cx.fillStyle='#0d0d1a'; cx.fillRect(x+10,y+10,25,18);
+  cx.fillStyle=hexA('#00ffcc',0.12); cx.fillRect(x+11,y+11,23,16);
+  cx.fillStyle=hexA('#00ffcc',0.45);
+  cx.fillRect(x+13,y+14,10,1.5); cx.fillRect(x+13,y+17,15,1.5); cx.fillRect(x+13,y+20,8,1.5);
+  cx.font='bold 8px Courier New'; cx.fillStyle=hexA('#4fa3ff',0.75); cx.fillText('RECEPTION',x+55,y+28);
+  cx.fillStyle='#cc4466'; cx.beginPath(); cx.arc(x+110,y+12,4,0,Math.PI*2); cx.fill();
+  cx.fillStyle='#226622'; cx.fillRect(x+109,y+15,2,8);
+}
+function drawSofa(x,y){
+  cx.fillStyle='#1a1230'; cx.fillRect(x,y,50,20);
+  cx.strokeStyle='#2a1a40'; cx.lineWidth=0.5; cx.strokeRect(x,y,50,20);
+  cx.fillStyle='#1e1635'; cx.fillRect(x,y,50,6);
+  [0,1].forEach(ci=>{
+    cx.fillStyle='#221640'; cx.fillRect(x+2+ci*25,y+7,22,12);
+    cx.strokeStyle='#2a1a4a'; cx.strokeRect(x+2+ci*25,y+7,22,12);
+    cx.fillStyle=hexA('#4fa3ff',0.04); cx.fillRect(x+4+ci*25,y+9,18,8);
+  });
+  cx.fillStyle='#1e1635';
+  cx.fillRect(x,y+6,3,14); cx.fillRect(x+47,y+6,3,14);
+}
+function drawWindowCity(x,y,w,h){
+  cx.fillStyle='#0a0a18'; cx.fillRect(x,y,w,h);
+  cx.strokeStyle='#1a2a4a'; cx.lineWidth=1; cx.strokeRect(x,y,w,h);
+  const gr=cx.createLinearGradient(x,y,x,y+h);
+  gr.addColorStop(0,'rgba(0,5,30,0.92)'); gr.addColorStop(1,'rgba(0,15,50,0.65)');
+  cx.fillStyle=gr; cx.fillRect(x+1,y+1,w-2,h-2);
+  // buildings
+  const bw=Math.floor(w/8);
+  for(let bi=0;bi<Math.floor(w/bw);bi++){
+    const bh=10+((bi*7+31)%25);
+    const bx=x+bi*bw+1;
+    cx.fillStyle='rgba(5,5,20,0.95)'; cx.fillRect(bx,y+h-bh,bw-1,bh);
+    for(let wy=y+h-bh+2;wy<y+h-2;wy+=4)
+      for(let wx=bx+1;wx<bx+bw-2;wx+=3){
+        // slow window flicker — changes every ~8s
+        const lit=Math.sin(t*0.12+wx*0.7+wy*0.3)>0.2;
+        if(lit){ cx.fillStyle=hexA('#ffee88',0.45); cx.fillRect(wx,wy,1.5,2); }
+      }
+  }
+  cx.strokeStyle=hexA('#1a2a4a',0.5); cx.lineWidth=1;
+  cx.beginPath(); cx.moveTo(x+w/2,y); cx.lineTo(x+w/2,y+h); cx.stroke();
+  cx.beginPath(); cx.moveTo(x,y+h/2); cx.lineTo(x+w,y+h/2); cx.stroke();
+}
+function drawRobotIcon(x,y){
+  const eyeGlow=0.85+Math.sin(t*0.5)*0.1; // slow pulse
+  cx.fillStyle='#2a3a4a'; cx.fillRect(x+8,y,18,14);
+  cx.strokeStyle=hexA('#44aaff',0.55); cx.lineWidth=0.8; cx.strokeRect(x+8,y,18,14);
+  cx.fillStyle=hexA('#00ffcc',eyeGlow); cx.fillRect(x+11,y+4,4,4); cx.fillRect(x+19,y+4,4,4);
+  cx.fillStyle=hexA('#00ffcc',0.12); cx.fillRect(x+10,y+3,6,6); cx.fillRect(x+18,y+3,6,6);
+  cx.fillStyle='#2a3a4a'; cx.fillRect(x+5,y+15,24,20);
+  cx.strokeStyle=hexA('#44aaff',0.35); cx.strokeRect(x+5,y+15,24,20);
+  cx.fillStyle='#001a30'; cx.fillRect(x+9,y+18,16,10);
+  const barH=4+Math.sin(t*0.4)*2; // slow bar animation
+  cx.fillStyle=hexA('#00ffcc',0.5); cx.fillRect(x+11,y+28-barH,5,barH);
+  cx.fillStyle=hexA('#0050ff',0.5); cx.fillRect(x+18,y+28-barH*0.7,5,barH*0.7);
+  cx.fillStyle='#2a3a4a';
+  cx.fillRect(x,y+16,5,14); cx.fillRect(x+29,y+16,5,14);
+  cx.fillRect(x+8,y+35,7,14); cx.fillRect(x+19,y+35,7,14);
+  cx.fillStyle='#1a2a3a'; cx.fillRect(x+6,y+47,10,4); cx.fillRect(x+17,y+47,10,4);
+  cx.font='bold 8px Courier New'; cx.fillStyle=hexA('#00ffcc',0.65); cx.fillText('G1',x+15,y+58);
+}
+function drawChar(x,y,color){
+  // slow walk bob — ~0.8s period
+  const bobY=Math.sin(t*2.5)*1.2;
+  const fy=y+bobY;
+  cx.fillStyle='rgba(0,0,0,0.22)'; cx.beginPath(); cx.ellipse(x,fy+1,9,3,0,0,Math.PI*2); cx.fill();
+  cx.fillStyle=hexA(color,0.6); cx.fillRect(x-6,fy-8,5,8); cx.fillRect(x+1,fy-8,5,8);
+  cx.fillStyle='#111'; cx.fillRect(x-7,fy-2,6,3); cx.fillRect(x,fy-2,6,3);
+  cx.fillStyle=color; cx.fillRect(x-8,fy-22,16,14);
+  cx.fillStyle='rgba(255,255,255,0.1)'; cx.fillRect(x-8,fy-22,16,3);
+  cx.fillStyle=hexA(color,0.75); cx.fillRect(x-11,fy-21,3,8); cx.fillRect(x+8,fy-21,3,8);
+  cx.fillStyle='#d4a470'; cx.fillRect(x-11,fy-14,3,3); cx.fillRect(x+8,fy-14,3,3);
+  cx.fillStyle='#d4a470'; cx.fillRect(x-3,fy-25,6,4); cx.fillRect(x-6,fy-32,12,8);
+  cx.fillStyle=hexA(color,0.8);
+  cx.fillRect(x-6,fy-32,12,3); cx.fillRect(x-6,fy-32,3,6); cx.fillRect(x+3,fy-32,3,6);
+  cx.fillStyle='#000'; cx.fillRect(x-4,fy-28,3,3); cx.fillRect(x+1,fy-28,3,3);
+  cx.fillStyle='#fff'; cx.fillRect(x-3,fy-28,1,1); cx.fillRect(x+2,fy-28,1,1);
+}
+
+// ── Dialog bubble (chat style) ──
+function drawBubble(a, lineText, isReply) {
+  const { x, y, name, color, state, sc } = a;
+  // slow float — ~4s period, offset per actor
+  const idx = actors.indexOf(a);
+  const floatY = Math.sin(t * 0.25 + idx * 1.1) * 3;
+  const bx = isReply ? x - 145 : x - 10;
+  const by = y - 100 + floatY;
+  const maxW = 135;
+
+  cx.font = '8px Courier New';
+  const words = lineText.split(' ');
+  let lines = [], cur = '';
+  words.forEach(w => {
+    const test = cur ? cur+' '+w : w;
+    if(cx.measureText(test).width > maxW-16){ lines.push(cur); cur=w; }
+    else cur=test;
+  });
+  if(cur) lines.push(cur);
+
+  const lineH = 11;
+  const textW = Math.min(maxW, Math.max(...lines.map(l=>cx.measureText(l).width))+16);
+  const textH = lines.length*lineH + 28;
+  const radius = isReply ? '8px 8px 2px 8px' : '8px 8px 8px 2px';
+
+  // bubble background
+  roundRect(bx, by, textW, textH, 6, hexA('#0d1a2e',0.93), hexA('#4fa3ff',0.22));
+
+  // tail
+  cx.fillStyle=hexA('#0d1a2e',0.93);
+  if(isReply){
+    cx.beginPath(); cx.moveTo(bx+textW-10,by+textH); cx.lineTo(bx+textW+4,by+textH+10); cx.lineTo(bx+textW-22,by+textH); cx.closePath(); cx.fill();
+  } else {
+    cx.beginPath(); cx.moveTo(bx+12,by+textH); cx.lineTo(bx+6,by+textH+10); cx.lineTo(bx+24,by+textH); cx.closePath(); cx.fill();
+  }
+
+  // name
+  cx.font='bold 8px Courier New';
+  cx.fillStyle=color;
+  cx.fillText(name, bx+8, by+13);
+
+  // text
+  cx.font='8px Courier New';
+  cx.fillStyle=hexA('#cceeff',0.88);
+  lines.forEach((line,li)=>cx.fillText(line, bx+8, by+13+12+li*lineH));
+
+  // activity badge strip at bottom of bubble
+  const badge = state;
+  cx.fillStyle=hexA('#020508',0.9);
+  cx.fillRect(bx+1, by+textH-13, textW-2, 12);
+  cx.fillStyle=sc;
+  cx.beginPath(); cx.arc(bx+8, by+textH-7, 2, 0, Math.PI*2); cx.fill();
+  cx.font='7px Courier New'; cx.fillStyle=sc;
+  cx.fillText(badge, bx+14, by+textH-4);
+}
+
+// ── Convo line selector — changes every 5s ──
+function getConvoLine(convoIdx, side) {
+  const convo = CONVOS[convoIdx];
+  // cycle through lines every 5s, alternating A and B
+  const stepIdx = Math.floor(t / 5) % convo.lines.length;
+  const line = convo.lines[stepIdx];
+  // show only if it's this side's turn
+  if(line.speaker === (side==='a'?convo.a:convo.b)){
+    return line.text;
+  }
+  // otherwise show the previous line for this side
+  for(let i=stepIdx-1;i>=0;i--){
+    if(convo.lines[i].speaker===(side==='a'?convo.a:convo.b)) return convo.lines[i].text;
+  }
+  return actors.find(a=>a.convo===convoIdx&&a.side===side)?.solo || '';
+}
+
+function drawScanlines(){
+  cx.fillStyle='rgba(0,0,0,0.04)';
+  for(let y=0;y<H;y+=3) cx.fillRect(0,y,W,1);
+}
+
+// ── Convo indicator between paired bots ──
+function drawConvoLine(a1, a2) {
+  // dashed line between two talking agents, slow pulse
+  const alpha = 0.08 + Math.sin(t*1.0)*0.06;
+  cx.strokeStyle=`rgba(79,163,255,${alpha})`;
+  cx.lineWidth=1; cx.setLineDash([4,6]);
+  cx.beginPath(); cx.moveTo(a1.x,a1.y-15); cx.lineTo(a2.x,a2.y-15); cx.stroke();
+  cx.setLineDash([]);
+}
+
+function render(now) {
+  const dt = (now - last) / 1000;
+  t += dt;
+  last = now;
+
+  cx.clearRect(0,0,W,H);
+  drawGrid();
+  rooms.forEach(drawRoom);
+
+  // ── Decorations ──
+  drawWhiteboard(180,20,24,60,'#4fa3ff'); drawWhiteboard(154,20,20,60,'#224455');
+  drawBookshelf(7,20,38,55);
+  drawWindowCity(50,15,60,40);
+  drawServer(247,20); drawServer(270,20);
+  drawWindowCity(320,10,55,35);
+  drawServer(443,20); drawServer(466,20); drawServer(489,20); drawServer(512,20);
+  drawWindowCity(630,10,70,40);
+  drawWhiteboard(790,15,20,55,'#ff8c00'); drawBookshelf(760,10,26,50);
+  drawPlant(10,320,true); drawPlant(355,320,true); drawPlant(190,190,false);
+  drawCoffeeMachine(290,310);
+  drawWindowCity(60,190,70,45);
+  drawWhiteboard(310,190,30,60,'#ffee44'); drawWhiteboard(345,190,24,60,'#cc8800');
+  drawPrinter(250,330);
+  drawBookshelf(398,190,40,60); drawBookshelf(440,190,30,60);
+  drawPrinter(570,330); drawPlant(580,185,false);
+  drawServer(624,190); drawServer(647,190);
+  drawRobotIcon(697,195);
+  drawWindowCity(780,185,60,50);
+  drawReceptionDesk(310,400);
+  drawSofa(60,415); drawSofa(720,415);
+  drawPlant(15,410,true); drawPlant(820,410,true);
+  drawCoffeeMachine(15,490);
+  drawWindowCity(100,385,80,50); drawWindowCity(660,385,80,50);
+
+  // ── Desks ──
+  const deskExtras=['coffee','notebook','plant','coffee','notebook','plant'];
+  [[20,55],[76,55],[132,55],[20,115],[76,115],[132,115]].forEach(([dx,dy],i)=>drawDesk(dx,dy,'#4fa3ff',deskExtras[i]));
+  [[248,55],[300,55],[348,55],[248,115],[300,115]].forEach(([dx,dy],i)=>drawDesk(dx,dy,'#aa66ff',['coffee','notebook','coffee','plant','coffee'][i]));
+  [[443,55],[495,55],[443,115],[495,115]].forEach(([dx,dy],i)=>drawDesk(dx,dy,'#00cc88',['coffee','coffee','notebook','plant'][i]));
+  [[630,55],[682,55],[630,115],[682,115],[734,115]].forEach(([dx,dy],i)=>drawDesk(dx,dy,'#ff8c00',['coffee','notebook','coffee','plant','coffee'][i]));
+  [[20,225],[72,225],[124,225],[176,225],[20,295],[72,295],[124,295]].forEach(([dx,dy],i)=>drawDesk(dx,dy,'#ffee44',['plant','coffee','notebook','coffee','notebook','plant','coffee'][i]));
+  [[400,230],[452,230],[504,230],[400,295],[452,295]].forEach(([dx,dy],i)=>drawDesk(dx,dy,'#ff4466',['coffee','notebook','coffee','plant','coffee'][i]));
+  [[624,230],[676,230],[624,300]].forEach(([dx,dy],i)=>drawDesk(dx,dy,'#00ffcc',['coffee','notebook','plant'][i]));
+
+  // ── Convo connection lines ──
+  drawConvoLine(actors[0], actors[1]); // SAVVY ↔ CLAUDE
+  drawConvoLine(actors[2], actors[5]); // GOOGLE ↔ OPS-1
+  drawConvoLine(actors[3], actors[4]); // DEV-1 ↔ DEV-2
+
+  // ── Characters ──
+  actors.forEach(a=>drawChar(a.x,a.y,a.color));
+
+  // ── Bubbles ──
+  actors.forEach((a,i)=>{
+    let text, isReply=false;
+    if(a.convo!==null){
+      text = getConvoLine(a.convo, a.side);
+      // right-side actor in a pair gets reply bubble
+      isReply = (a.side==='b');
+    } else {
+      text = a.solo;
+    }
+    drawBubble(a, text, isReply);
+  });
+
+  drawScanlines();
+  requestAnimationFrame(render);
+}
+requestAnimationFrame(render);
+</script>
+</body>
+</html>

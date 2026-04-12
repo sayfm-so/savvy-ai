@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Office Enhancement Preview</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #050510; color: #cceeff; font-family: 'Courier New', monospace; padding: 16px; }
+h2 { color: #00ffcc; text-align: center; letter-spacing: 3px; font-size: 15px; margin-bottom: 3px; }
+.sub { color: #446688; text-align: center; font-size: 10px; margin-bottom: 14px; letter-spacing: 1px; }
+
+canvas { display: block; margin: 0 auto; border: 1px solid #1a2a4a; image-rendering: pixelated; }
+
+.legend { max-width: 860px; margin: 12px auto 0; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.leg { font-size: 10px; color: #446688; display: flex; align-items: center; gap: 5px; }
+.leg-dot { width: 10px; height: 10px; flex-shrink:0; }
+</style>
+</head>
+<body>
+<h2>SAVVY AI — ENHANCED OFFICE PREVIEW</h2>
+<p class="sub">Rich room details + chat dialog bubbles · click anywhere to animate</p>
+
+<canvas id="c" width="860" height="560"></canvas>
+
+<div class="legend">
+  <div class="leg"><div class="leg-dot" style="background:#1a1a2e;border:1px solid #0050ff;"></div>Detailed desks w/ dual monitors, coffee, keyboard</div>
+  <div class="leg"><div class="leg-dot" style="background:#112233;border:1px solid #4fa3ff44;"></div>Whiteboards w/ code & diagrams</div>
+  <div class="leg"><div class="leg-dot" style="background:#0d1a2e;border:1px solid #4fa3ff33;"></div>Chat bubbles — activity + conversation</div>
+  <div class="leg"><div class="leg-dot" style="background:#223344;border:1px solid #00ffcc44;"></div>Server racks, plants, bookshelves, coffee machine</div>
+</div>
+<p style="text-align:center;color:#334466;font-size:10px;margin-top:10px;">Let me know what you want changed or added in terminal</p>
+
+<script>
+const cv = document.getElementById('c');
+const cx = cv.getContext('2d');
+const W = 860, H = 560;
+const TILE = 16;
+const HUD_W = 0; // no HUD in preview
+
+// ── Color palette ──
+const C = {
+  bg:'#050510', floor:'#0f0f1a', floorAlt:'#0c0c16',
+  wall:'#1a1a2e', grid:'#1c1c2c',
+  savvy:'#0050ff', claude:'#4fa3ff', google:'#ff8c00',
+  npc1:'#00cc88', npc2:'#cc44aa', npc3:'#ffcc00', npc4:'#44aaff',
+  screen:'#00ffcc', screenDim:'#004433',
+  plant:'#226622', server:'#223344',
+};
+
+// ── Rooms ──
+const rooms = [
+  { id:'rd',     x:5,   y:5,   w:230, h:170, bg:'#0d1a2e', label:'R&D LAB',       lc:'#4fa3ff' },
+  { id:'ai',     x:245, y:5,   w:185, h:170, bg:'#1a0d2e', label:'AI CORE',        lc:'#aa66ff' },
+  { id:'infra',  x:440, y:5,   w:175, h:170, bg:'#0d2e1a', label:'INFRA',          lc:'#00cc88' },
+  { id:'ops',    x:625, y:5,   w:230, h:170, bg:'#2e1a0d', label:'OPS COMMAND',    lc:'#ff8c00' },
+  { id:'design', x:5,   y:185, w:380, h:185, bg:'#1a1a0d', label:'DESIGN STUDIO',  lc:'#ffee44' },
+  { id:'legal',  x:395, y:185, w:215, h:185, bg:'#2e0d0d', label:'LEGAL WING',     lc:'#ff4466' },
+  { id:'robot',  x:620, y:185, w:235, h:185, bg:'#0d2e2e', label:'ROBOTICS LAB',   lc:'#00ffcc' },
+  { id:'lobby',  x:5,   y:380, w:850, h:170, bg:'#111118', label:'LOBBY — SEOUL HQ',lc:'#4fa3ff88'},
+];
+
+// ── Actors ──
+const actors = [
+  { name:'SAVVY',   x:300, y:120, color:'#0050ff', dialog:'Just indexed 47 new docs into RAG.', state:'WORKING',   stateColor:'#00ffcc' },
+  { name:'CLAUDE',  x:100, y:95,  color:'#4fa3ff', dialog:'PR #42 has 3 unresolved threads...', state:'THINKING',  stateColor:'#ffee44' },
+  { name:'GOOGLE',  x:700, y:95,  color:'#ff8c00', dialog:'All 6 endpoints nominal. 42ms avg.', state:'WORKING',   stateColor:'#00ffcc' },
+  { name:'DEV-1',   x:100, y:300, color:'#00cc88', dialog:'Stack trace was a typo. Classic.',   state:'WORKING',   stateColor:'#00ffcc' },
+  { name:'DEV-2',   x:450, y:300, color:'#cc44aa', dialog:'Wrote 12 tests. 11 passing.',        state:'REVIEWING', stateColor:'#aaccff' },
+  { name:'OPS-1',   x:560, y:90,  color:'#ffcc00', dialog:'CPU at 34%. All green.',             state:'WORKING',   stateColor:'#00ffcc' },
+  { name:'ROBOT-E', x:710, y:310, color:'#44aaff', dialog:'Joint sweep: 24/24 axes OK.',        state:'WORKING',   stateColor:'#00ffcc' },
+];
+
+let frame = 0;
+let bubbleOffsets = actors.map(() => 0);
+
+function hex(h) {
+  h = h.replace('#','');
+  if(h.length===3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  const n = parseInt(h.substring(0,6),16);
+  return `rgb(${(n>>16)&255},${(n>>8)&255},${n&255})`;
+}
+function hexA(h, a) {
+  h = h.replace('#','');
+  if(h.length===3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  const hs = h.substring(0,6);
+  const n = parseInt(hs, 16);
+  return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
+}
+
+function drawGrid() {
+  cx.fillStyle = C.bg;
+  cx.fillRect(0, 0, W, H);
+  cx.strokeStyle = C.grid;
+  cx.lineWidth = 0.5;
+  cx.globalAlpha = 0.25;
+  for(let x=0;x<W;x+=TILE){ cx.beginPath(); cx.moveTo(x,0); cx.lineTo(x,H); cx.stroke(); }
+  for(let y=0;y<H;y+=TILE){ cx.beginPath(); cx.moveTo(0,y); cx.lineTo(W,y); cx.stroke(); }
+  cx.globalAlpha = 1;
+}
+
+function drawRoom(r) {
+  // Floor
+  cx.fillStyle = hexA(r.bg.replace(/22$/,''), 0.95);
+  cx.fillRect(r.x, r.y, r.w, r.h);
+  // Checkerboard
+  for(let tx=r.x;tx<r.x+r.w;tx+=TILE)
+    for(let ty=r.y;ty<r.y+r.h;ty+=TILE){
+      const alt=((Math.floor(tx/TILE)+Math.floor(ty/TILE))%2===0);
+      cx.fillStyle = alt?'rgba(255,255,255,0.015)':'rgba(0,0,0,0.02)';
+      cx.fillRect(tx,ty,TILE,TILE);
+    }
+  // Border
+  cx.strokeStyle = hexA('#0050ff',0.45);
+  cx.lineWidth = 1.5;
+  cx.strokeRect(r.x,r.y,r.w,r.h);
+  // Corner dots
+  [[0,0],[r.w-4,0],[0,r.h-4],[r.w-4,r.h-4]].forEach(([dx,dy])=>{
+    cx.fillStyle = hexA('#0050ff',0.8);
+    cx.fillRect(r.x+dx,r.y+dy,4,4);
+  });
+  // Top stripe
+  cx.fillStyle = 'rgba(255,255,255,0.03)';
+  cx.fillRect(r.x,r.y,r.w,2);
+  // Label
+  cx.font = 'bold 10px Courier New';
+  cx.fillStyle = r.lc;
+  cx.globalAlpha = 0.9;
+  cx.fillText(r.label, r.x+8, r.y+16);
+  cx.globalAlpha = 1;
+}
+
+function drawDesk(x, y, color='#00ffcc', hasExtra=false, extraType='coffee') {
+  const f = frame;
+  // Desk surface
+  cx.fillStyle = '#1a1a2e';
+  cx.fillRect(x, y, 52, 30);
+  cx.strokeStyle = '#2a2a4e';
+  cx.lineWidth = 1;
+  cx.strokeRect(x, y, 52, 30);
+  // Desk legs
+  cx.fillStyle = '#111122';
+  cx.fillRect(x+2, y+28, 6, 4);
+  cx.fillRect(x+44, y+28, 6, 4);
+
+  // Monitor 1 (main)
+  cx.fillStyle = '#0d0d1a';
+  cx.fillRect(x+4, y+2, 18, 14);
+  cx.strokeStyle = '#222244';
+  cx.lineWidth = 0.5;
+  cx.strokeRect(x+4, y+2, 18, 14);
+  // Screen glow
+  cx.fillStyle = hexA(color, 0.15);
+  cx.fillRect(x+5, y+3, 16, 12);
+  // Code lines on screen (animated)
+  const lw1 = 4 + (f*2+x) % 11;
+  const lw2 = 3 + (f*3+y) % 9;
+  const lw3 = 6 + (f+x*2) % 7;
+  cx.fillStyle = hexA(color, 0.75);
+  cx.fillRect(x+6, y+5, lw1, 1.5);
+  cx.fillRect(x+6, y+8, lw2, 1.5);
+  cx.fillRect(x+6, y+11, lw3, 1.5);
+  // Monitor stand
+  cx.fillStyle = '#1a1a2e';
+  cx.fillRect(x+12, y+15, 3, 3);
+
+  // Monitor 2 (secondary)
+  cx.fillStyle = '#0d0d1a';
+  cx.fillRect(x+26, y+2, 14, 10);
+  cx.strokeStyle = '#222244';
+  cx.strokeRect(x+26, y+2, 14, 10);
+  cx.fillStyle = hexA('#ff8c00', 0.1);
+  cx.fillRect(x+27, y+3, 12, 8);
+  // Code lines
+  const lw4 = 3 + (f+y) % 9;
+  cx.fillStyle = hexA('#ff8c00', 0.6);
+  cx.fillRect(x+28, y+5, lw4, 1.5);
+  cx.fillRect(x+28, y+8, lw4-2, 1.5);
+
+  // Keyboard
+  cx.fillStyle = '#13132a';
+  cx.fillRect(x+3, y+18, 22, 5);
+  cx.strokeStyle = '#222244';
+  cx.lineWidth = 0.5;
+  cx.strokeRect(x+3, y+18, 22, 5);
+  // Key rows
+  for(let ki=0;ki<3;ki++) {
+    cx.fillStyle = hexA('#ffffff', 0.06);
+    for(let kj=0;kj<6;kj++) cx.fillRect(x+4+kj*3.5, y+19+ki*1.5, 3, 1);
+  }
+
+  // Mouse
+  cx.fillStyle = '#13132a';
+  cx.beginPath();
+  cx.ellipse(x+30, y+22, 3, 4, 0, 0, Math.PI*2);
+  cx.fill();
+
+  // Extra prop
+  if(hasExtra) {
+    if(extraType==='coffee') {
+      // Coffee cup
+      cx.fillStyle = '#3d2000';
+      cx.fillRect(x+44, y+18, 6, 8);
+      cx.fillStyle = '#5a3300';
+      cx.fillRect(x+44, y+18, 6, 2);
+      // Steam
+      if((frame+Math.floor(x/10)) % 8 < 4) {
+        cx.strokeStyle = hexA('#ffffff', 0.15);
+        cx.lineWidth = 0.5;
+        cx.beginPath(); cx.moveTo(x+46, y+17); cx.bezierCurveTo(x+44,y+14,x+48,y+12,x+46,y+9); cx.stroke();
+        cx.beginPath(); cx.moveTo(x+49, y+17); cx.bezierCurveTo(x+47,y+13,x+51,y+11,x+49,y+8); cx.stroke();
+      }
+    } else if(extraType==='notebook') {
+      // Notebook
+      cx.fillStyle = '#1a2a1a';
+      cx.fillRect(x+44, y+18, 7, 9);
+      cx.strokeStyle = '#226622';
+      cx.lineWidth = 0.5;
+      cx.strokeRect(x+44, y+18, 7, 9);
+      cx.fillStyle = hexA('#00cc88', 0.3);
+      for(let ni=0;ni<3;ni++) cx.fillRect(x+45, y+20+ni*2.5, 5, 1);
+    } else if(extraType==='plant') {
+      // Mini plant
+      cx.fillStyle = '#663311';
+      cx.fillRect(x+45, y+22, 5, 5);
+      cx.fillStyle = '#226622';
+      cx.beginPath(); cx.arc(x+47, y+20, 4, 0, Math.PI*2); cx.fill();
+      cx.fillStyle = '#113311';
+      cx.beginPath(); cx.arc(x+47, y+19, 2, 0, Math.PI*2); cx.fill();
+    }
+  }
+}
+
+function drawWhiteboard(x, y, w, h, color='#4fa3ff') {
+  cx.fillStyle = '#101e30';
+  cx.fillRect(x, y, w, h);
+  cx.strokeStyle = hexA(color, 0.5);
+  cx.lineWidth = 1;
+  cx.strokeRect(x, y, w, h);
+  // Frame top
+  cx.fillStyle = '#0a1428';
+  cx.fillRect(x, y, w, 3);
+  // Lines (code/diagram)
+  cx.strokeStyle = hexA(color, 0.18);
+  cx.lineWidth = 0.5;
+  for(let ly=y+8; ly<y+h-4; ly+=6) {
+    const lw = (Math.sin(ly*0.3)*0.5+0.5)*(w-12);
+    cx.beginPath(); cx.moveTo(x+4, ly); cx.lineTo(x+4+lw, ly); cx.stroke();
+  }
+  // Highlight dot
+  cx.fillStyle = hexA(color, 0.6);
+  cx.fillRect(x+3, y+4, 3, 3);
+}
+
+function drawServer(x, y) {
+  cx.fillStyle = '#1e2e3e';
+  cx.fillRect(x, y, 20, 90);
+  cx.strokeStyle = '#2a3a4a';
+  cx.lineWidth = 0.5;
+  cx.strokeRect(x, y, 20, 90);
+  // Top stripe
+  cx.fillStyle = '#00aaff';
+  cx.fillRect(x, y, 20, 2);
+  // Drive bays
+  for(let i=0;i<5;i++){
+    cx.fillStyle = '#111e2a';
+    cx.fillRect(x+2, y+6+i*16, 16, 11);
+    cx.strokeStyle = '#1a2a3a';
+    cx.strokeRect(x+2, y+6+i*16, 16, 11);
+    // LED
+    const on = ((frame+i*3)%6 < 3);
+    cx.fillStyle = on ? '#00ff44' : '#00aaff';
+    cx.globalAlpha = on ? 0.9 : 0.5;
+    cx.fillRect(x+16, y+8+i*16, 2, 2);
+    cx.globalAlpha = 1;
+    // Drive lines
+    cx.fillStyle = hexA('#00aaff', 0.15);
+    cx.fillRect(x+3, y+9+i*16, 10, 1);
+    cx.fillRect(x+3, y+12+i*16, 7, 1);
+  }
+}
+
+function drawPlant(x, y, big=false) {
+  const s = big ? 1.4 : 1;
+  // Pot
+  cx.fillStyle = '#7a4422';
+  cx.fillRect(x+Math.round(4*s), y+Math.round(14*s), Math.round(12*s), Math.round(8*s));
+  cx.strokeStyle = '#553311';
+  cx.lineWidth = 0.5;
+  cx.strokeRect(x+Math.round(4*s), y+Math.round(14*s), Math.round(12*s), Math.round(8*s));
+  cx.fillStyle = '#331100';
+  cx.fillRect(x+Math.round(5*s), y+Math.round(14*s), Math.round(10*s), Math.round(3*s));
+  // Leaves
+  cx.fillStyle = '#2a7a2a';
+  cx.beginPath();
+  cx.moveTo(x+Math.round(10*s), y);
+  cx.lineTo(x+Math.round(2*s), y+Math.round(16*s));
+  cx.lineTo(x+Math.round(18*s), y+Math.round(16*s));
+  cx.closePath(); cx.fill();
+  cx.fillStyle = '#1a4a1a';
+  cx.beginPath(); cx.arc(x+Math.round(10*s), y+Math.round(8*s), Math.round(7*s), 0, Math.PI*2); cx.fill();
+  cx.fillStyle = '#3a9a3a';
+  cx.beginPath(); cx.arc(x+Math.round(10*s), y+Math.round(7*s), Math.round(4*s), 0, Math.PI*2); cx.fill();
+}
+
+function drawCoffeeMachine(x, y) {
+  // Body
+  cx.fillStyle = '#1a1a2e';
+  cx.fillRect(x, y, 22, 32);
+  cx.strokeStyle = '#2a2a4e';
+  cx.lineWidth = 0.8;
+  cx.strokeRect(x, y, 22, 32);
+  // Screen
+  cx.fillStyle = '#001420';
+  cx.fillRect(x+3, y+3, 10, 7);
+  cx.fillStyle = hexA('#00ffcc', 0.6);
+  cx.font = '4px Courier New';
+  cx.fillText('READY', x+4, y+8);
+  // Buttons
+  const btnColors = ['#0050ff','#00cc88','#ffee44'];
+  btnColors.forEach((bc,bi) => {
+    cx.fillStyle = hexA(bc, 0.8);
+    cx.beginPath(); cx.arc(x+16, y+5+bi*4, 2, 0, Math.PI*2); cx.fill();
+  });
+  // Nozzle
+  cx.fillStyle = '#111122';
+  cx.fillRect(x+8, y+16, 6, 8);
+  // Cup area
+  cx.fillStyle = '#0d0d1a';
+  cx.fillRect(x+4, y+25, 14, 6);
+  // Cup
+  cx.fillStyle = '#3d2000';
+  cx.fillRect(x+8, y+26, 6, 5);
+  // Steam
+  if(frame%8 < 4) {
+    cx.strokeStyle = hexA('#ffffff', 0.1);
+    cx.lineWidth = 0.5;
+    cx.beginPath(); cx.moveTo(x+10, y+25); cx.bezierCurveTo(x+8,y+22,x+12,y+20,x+10,y+17); cx.stroke();
+  }
+}
+
+function drawBookshelf(x, y, w=36, h=50) {
+  cx.fillStyle = '#1a1220';
+  cx.fillRect(x, y, w, h);
+  cx.strokeStyle = '#2a1a30';
+  cx.lineWidth = 0.5;
+  cx.strokeRect(x, y, w, h);
+  // Shelves
+  const bookColors = ['#0050ff','#ff4466','#00cc88','#ffee44','#4fa3ff','#cc44aa','#ff8c00','#44aaff'];
+  let bx = x+2;
+  [2,3,4].forEach((row, ri) => {
+    const sy = y + 4 + ri * 15;
+    cx.fillStyle = '#111118'; cx.fillRect(x+1, sy+12, w-2, 1);
+    let bxi = x+2;
+    for(let bi=0;bi<row+3;bi++) {
+      const bw = 3 + (bi%3);
+      cx.fillStyle = hexA(bookColors[(ri*4+bi)%bookColors.length], 0.8);
+      cx.fillRect(bxi, sy, bw, 11);
+      cx.fillStyle = hexA('#000000', 0.2);
+      cx.fillRect(bxi, sy, 1, 11);
+      bxi += bw + 1;
+    }
+  });
+}
+
+function drawPrinter(x, y) {
+  cx.fillStyle = '#1e1e30';
+  cx.fillRect(x, y, 32, 20);
+  cx.strokeStyle = '#2a2a44';
+  cx.lineWidth = 0.5;
+  cx.strokeRect(x, y, 32, 20);
+  // Paper slot
+  cx.fillStyle = '#111120';
+  cx.fillRect(x+4, y+4, 24, 4);
+  // Status LED
+  cx.fillStyle = frame%10<5 ? '#00ff44' : '#004400';
+  cx.beginPath(); cx.arc(x+28, y+3, 2, 0, Math.PI*2); cx.fill();
+  // Paper output
+  cx.fillStyle = '#e8e8e8';
+  cx.fillRect(x+6, y+13, 20, 1);
+  cx.fillStyle = '#cccccc';
+  cx.fillRect(x+6, y+15, 15, 1);
+  // Label
+  cx.fillStyle = hexA('#ffffff', 0.2);
+  cx.font = '4px Courier New';
+  cx.fillText('PRINT', x+9, y+10);
+}
+
+function drawReceptionDesk(x, y) {
+  // Main desk
+  cx.fillStyle = '#1a1a3a';
+  cx.fillRect(x, y, 130, 45);
+  cx.strokeStyle = '#0050ff';
+  cx.lineWidth = 1;
+  cx.strokeRect(x, y, 130, 45);
+  // Counter top
+  cx.fillStyle = '#22224a';
+  cx.fillRect(x, y, 130, 8);
+  // Monitor
+  cx.fillStyle = '#0d0d1a';
+  cx.fillRect(x+10, y+10, 25, 18);
+  cx.strokeStyle = '#222244';
+  cx.lineWidth = 0.5;
+  cx.strokeRect(x+10, y+10, 25, 18);
+  cx.fillStyle = hexA('#00ffcc', 0.15);
+  cx.fillRect(x+11, y+11, 23, 16);
+  // Screen lines
+  cx.fillStyle = hexA('#00ffcc', 0.5);
+  cx.fillRect(x+13, y+14, 10, 1.5);
+  cx.fillRect(x+13, y+17, 15, 1.5);
+  cx.fillRect(x+13, y+20, 8, 1.5);
+  // Sign
+  cx.font = 'bold 8px Courier New';
+  cx.fillStyle = hexA('#4fa3ff', 0.8);
+  cx.fillText('RECEPTION', x+55, y+28);
+  // Flowers
+  cx.fillStyle = '#cc4466';
+  cx.beginPath(); cx.arc(x+110, y+12, 4, 0, Math.PI*2); cx.fill();
+  cx.fillStyle = '#226622';
+  cx.fillRect(x+109, y+15, 2, 8);
+}
+
+function drawSofa(x, y) {
+  // Base
+  cx.fillStyle = '#1a1230';
+  cx.fillRect(x, y, 50, 20);
+  cx.strokeStyle = '#2a1a40';
+  cx.lineWidth = 0.5;
+  cx.strokeRect(x, y, 50, 20);
+  // Back
+  cx.fillStyle = '#1e1635';
+  cx.fillRect(x, y, 50, 6);
+  // Cushions
+  [0,1].forEach(ci => {
+    cx.fillStyle = '#221640';
+    cx.fillRect(x+2+ci*25, y+7, 22, 12);
+    cx.strokeStyle = '#2a1a4a';
+    cx.strokeRect(x+2+ci*25, y+7, 22, 12);
+    cx.fillStyle = hexA('#4fa3ff', 0.05);
+    cx.fillRect(x+4+ci*25, y+9, 18, 8);
+  });
+  // Armrests
+  cx.fillStyle = '#1e1635';
+  cx.fillRect(x, y+6, 3, 14);
+  cx.fillRect(x+47, y+6, 3, 14);
+}
+
+function drawWindowCity(x, y, w, h) {
+  // Window frame
+  cx.fillStyle = '#0a0a18';
+  cx.fillRect(x, y, w, h);
+  cx.strokeStyle = '#1a2a4a';
+  cx.lineWidth = 1;
+  cx.strokeRect(x, y, w, h);
+  // Sky gradient
+  const grad = cx.createLinearGradient(x, y, x, y+h);
+  grad.addColorStop(0, 'rgba(0,5,30,0.9)');
+  grad.addColorStop(1, 'rgba(0,15,50,0.6)');
+  cx.fillStyle = grad;
+  cx.fillRect(x+1, y+1, w-2, h-2);
+  // City buildings
+  const bldgs = [
+    {bx:2,bw:6,bh:30},{bx:10,bw:8,bh:20},{bx:20,bw:5,bh:35},
+    {bx:27,bw:9,bh:25},{bx:38,bw:6,bh:30},{bx:46,bw:7,bh:22},
+  ];
+  bldgs.forEach(b => {
+    cx.fillStyle = hexA('#0a0a20',0.95);
+    cx.fillRect(x+b.bx, y+h-b.bh, b.bw, b.bh);
+    // Windows on buildings
+    for(let wy=y+h-b.bh+2; wy<y+h-2; wy+=4)
+      for(let wx=x+b.bx+1; wx<x+b.bx+b.bw-1; wx+=3) {
+        const lit = ((wx+wy+frame) % 7) < 3;
+        if(lit) {
+          cx.fillStyle = hexA('#ffee88', 0.5);
+          cx.fillRect(wx, wy, 1.5, 2);
+        }
+      }
+  });
+  // Window divider cross
+  cx.strokeStyle = hexA('#1a2a4a',0.6);
+  cx.lineWidth = 1;
+  cx.beginPath(); cx.moveTo(x+w/2, y); cx.lineTo(x+w/2, y+h); cx.stroke();
+  cx.beginPath(); cx.moveTo(x, y+h/2); cx.lineTo(x+w, y+h/2); cx.stroke();
+}
+
+function drawRobotSilhouette(x, y) {
+  // Head
+  cx.fillStyle = '#2a3a4a';
+  cx.fillRect(x+8, y, 18, 14);
+  cx.strokeStyle = hexA('#44aaff',0.6);
+  cx.lineWidth = 0.8;
+  cx.strokeRect(x+8, y, 18, 14);
+  // Eyes
+  cx.fillStyle = hexA('#00ffcc',0.9+Math.sin(frame*0.2)*0.05);
+  cx.fillRect(x+11, y+4, 4, 4);
+  cx.fillRect(x+19, y+4, 4, 4);
+  // Eye glow
+  cx.fillStyle = hexA('#00ffcc', 0.15);
+  cx.fillRect(x+10, y+3, 6, 6);
+  cx.fillRect(x+18, y+3, 6, 6);
+  // Body
+  cx.fillStyle = '#2a3a4a';
+  cx.fillRect(x+5, y+15, 24, 20);
+  cx.strokeStyle = hexA('#44aaff',0.4);
+  cx.strokeRect(x+5, y+15, 24, 20);
+  // Chest panel
+  cx.fillStyle = '#001a30';
+  cx.fillRect(x+9, y+18, 16, 10);
+  const barH = 4 + Math.sin(frame*0.15)*2;
+  cx.fillStyle = hexA('#00ffcc', 0.5);
+  cx.fillRect(x+11, y+24-barH, 5, barH);
+  cx.fillStyle = hexA('#0050ff', 0.5);
+  cx.fillRect(x+18, y+24-barH*0.7, 5, barH*0.7);
+  // Arms
+  cx.fillStyle = '#2a3a4a';
+  cx.fillRect(x, y+16, 5, 14);
+  cx.fillRect(x+29, y+16, 5, 14);
+  // Hands
+  cx.fillStyle = '#3a4a5a';
+  cx.fillRect(x, y+29, 5, 4);
+  cx.fillRect(x+29, y+29, 5, 4);
+  // Legs
+  cx.fillStyle = '#2a3a4a';
+  cx.fillRect(x+8, y+35, 7, 14);
+  cx.fillRect(x+19, y+35, 7, 14);
+  // Feet
+  cx.fillStyle = '#1a2a3a';
+  cx.fillRect(x+6, y+47, 10, 4);
+  cx.fillRect(x+17, y+47, 10, 4);
+  // Label
+  cx.font = 'bold 8px Courier New';
+  cx.fillStyle = hexA('#00ffcc',0.7);
+  cx.fillText('G1', x+15, y+58);
+}
+
+function drawChar(x, y, color) {
+  const bobY = (frame % 4 < 2) ? 1 : 0;
+  const fy = y + bobY;
+  // Shadow
+  cx.fillStyle = 'rgba(0,0,0,0.25)';
+  cx.beginPath(); cx.ellipse(x, fy+1, 9, 3, 0, 0, Math.PI*2); cx.fill();
+  // Legs
+  cx.fillStyle = hexA(color, 0.65);
+  cx.fillRect(x-6, fy-8, 5, 8);
+  cx.fillRect(x+1, fy-8, 5, 8);
+  // Shoes
+  cx.fillStyle = '#111111';
+  cx.fillRect(x-7, fy-2, 6, 3);
+  cx.fillRect(x, fy-2, 6, 3);
+  // Body
+  cx.fillStyle = color;
+  cx.fillRect(x-8, fy-22, 16, 14);
+  // Collar
+  cx.fillStyle = 'rgba(255,255,255,0.12)';
+  cx.fillRect(x-8, fy-22, 16, 3);
+  // Arms
+  cx.fillStyle = hexA(color, 0.8);
+  cx.fillRect(x-11, fy-21, 3, 8);
+  cx.fillRect(x+8, fy-21, 3, 8);
+  // Hands
+  cx.fillStyle = '#d4a470';
+  cx.fillRect(x-11, fy-14, 3, 3);
+  cx.fillRect(x+8, fy-14, 3, 3);
+  // Neck
+  cx.fillStyle = '#d4a470';
+  cx.fillRect(x-3, fy-25, 6, 4);
+  // Head
+  cx.fillRect(x-6, fy-32, 12, 8);
+  // Hair
+  cx.fillStyle = hexA(color, 0.85);
+  cx.fillRect(x-6, fy-32, 12, 3);
+  cx.fillRect(x-6, fy-32, 3, 6);
+  cx.fillRect(x+3, fy-32, 3, 6);
+  // Eyes
+  cx.fillStyle = '#000000';
+  cx.fillRect(x-4, fy-28, 3, 3);
+  cx.fillRect(x+1, fy-28, 3, 3);
+  cx.fillStyle = '#ffffff';
+  cx.fillRect(x-3, fy-28, 1, 1);
+  cx.fillRect(x+2, fy-28, 1, 1);
+}
+
+function drawBubble(x, y, name, dialog, state, stateColor, actorIdx) {
+  const bobOffset = Math.sin(frame * 0.05 + actorIdx * 0.8) * 2;
+  const bx = x - 10;
+  const by = y - 100 + bobOffset;
+  const maxW = 130;
+
+  // Measure text
+  cx.font = '8px Courier New';
+  const words = dialog.split(' ');
+  let lines = [], cur = '';
+  words.forEach(w => {
+    const test = cur ? cur + ' ' + w : w;
+    if(cx.measureText(test).width > maxW - 16) { lines.push(cur); cur = w; }
+    else cur = test;
+  });
+  if(cur) lines.push(cur);
+
+  const lineH = 11;
+  const textW = Math.min(maxW, Math.max(...lines.map(l => cx.measureText(l).width)) + 16);
+  const textH = lines.length * lineH + 16 + 12; // extra for name
+
+  // Bubble bg
+  cx.fillStyle = hexA('#0d1a2e', 0.94);
+  roundRect(cx, bx, by, textW, textH, 6);
+  cx.strokeStyle = hexA('#4fa3ff', 0.25);
+  cx.lineWidth = 1;
+  roundRect(cx, bx, by, textW, textH, 6, true);
+
+  // Tail
+  cx.fillStyle = hexA('#0d1a2e', 0.94);
+  cx.beginPath();
+  cx.moveTo(bx+12, by+textH);
+  cx.lineTo(bx+6, by+textH+10);
+  cx.lineTo(bx+22, by+textH);
+  cx.closePath(); cx.fill();
+
+  // Name
+  cx.font = 'bold 8px Courier New';
+  cx.fillStyle = name === 'SAVVY' ? '#0088ff'
+    : name === 'CLAUDE' ? '#4fa3ff'
+    : name === 'GOOGLE' ? '#ff8c00'
+    : name === 'ROBOT-E' ? '#44aaff'
+    : '#00cc88';
+  cx.fillText(name, bx+8, by+13);
+
+  // Text lines
+  cx.font = '8px Courier New';
+  cx.fillStyle = hexA('#cceeff', 0.9);
+  lines.forEach((line, li) => {
+    cx.fillText(line, bx+8, by+13+12+(li*lineH));
+  });
+
+  // Activity badge
+  const badgeW = cx.measureText(state).width + 10;
+  const badgeX = bx;
+  const badgeY = by + textH + 14;
+  cx.fillStyle = hexA('#050510', 0.9);
+  cx.fillRect(badgeX, badgeY, badgeW, 12);
+  cx.strokeStyle = hexA(stateColor, 0.7);
+  cx.lineWidth = 0.8;
+  cx.strokeRect(badgeX, badgeY, badgeW, 12);
+  // Dot
+  cx.fillStyle = stateColor;
+  cx.beginPath(); cx.arc(badgeX+5, badgeY+6, 2, 0, Math.PI*2); cx.fill();
+  // Text
+  cx.font = '7px Courier New';
+  cx.fillStyle = stateColor;
+  cx.fillText(state, badgeX+10, badgeY+9);
+}
+
+function roundRect(ctx, x, y, w, h, r, stroke=false) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.lineTo(x+w-r, y); ctx.arcTo(x+w, y, x+w, y+r, r);
+  ctx.lineTo(x+w, y+h-r); ctx.arcTo(x+w, y+h, x+w-r, y+h, r);
+  ctx.lineTo(x+r, y+h); ctx.arcTo(x, y+h, x, y+h-r, r);
+  ctx.lineTo(x, y+r); ctx.arcTo(x, y, x+r, y, r);
+  ctx.closePath();
+  if(stroke) ctx.stroke(); else ctx.fill();
+}
+
+// ── Scanlines overlay ──
+function drawScanlines() {
+  cx.fillStyle = 'rgba(0,0,0,0.04)';
+  for(let y=0;y<H;y+=3) cx.fillRect(0, y, W, 1);
+}
+
+function render() {
+  cx.clearRect(0, 0, W, H);
+  drawGrid();
+  rooms.forEach(drawRoom);
+
+  // ── R&D decorations ──
+  drawWhiteboard(180, 20, 24, 60, '#4fa3ff');
+  drawWhiteboard(154, 20, 20, 60, '#224455');
+  drawBookshelf(7, 20, 38, 55);
+  drawWindowCity(50, 15, 60, 40);
+
+  // ── AI Core decorations ──
+  drawServer(247, 20);
+  drawServer(270, 20);
+  drawWindowCity(320, 10, 55, 35);
+
+  // ── Infra decorations ──
+  drawServer(443, 20);
+  drawServer(466, 20);
+  drawServer(489, 20);
+  drawServer(512, 20);
+
+  // ── OPS decorations ──
+  drawWindowCity(630, 10, 70, 40);
+  drawWhiteboard(790, 15, 20, 55, '#ff8c00');
+  drawBookshelf(760, 10, 26, 50);
+
+  // ── Design Studio decorations ──
+  drawPlant(10, 320, true);
+  drawPlant(355, 320, true);
+  drawPlant(190, 190, false);
+  drawCoffeeMachine(290, 310);
+  drawWindowCity(60, 190, 70, 45);
+  drawWhiteboard(310, 190, 30, 60, '#ffee44');
+  drawWhiteboard(345, 190, 24, 60, '#cc8800');
+  drawPrinter(250, 330);
+
+  // ── Legal Wing ──
+  drawBookshelf(398, 190, 40, 60);
+  drawBookshelf(440, 190, 30, 60);
+  drawPrinter(570, 330);
+  drawPlant(580, 185);
+
+  // ── Robotics Lab ──
+  drawServer(624, 190);
+  drawServer(647, 190);
+  drawRobotSilhouette(697, 195);
+  drawWindowCity(780, 185, 60, 50);
+
+  // ── Lobby ──
+  drawReceptionDesk(310, 400);
+  drawSofa(60, 415);
+  drawSofa(720, 415);
+  drawPlant(15, 410, true);
+  drawPlant(820, 410, true);
+  drawCoffeeMachine(15, 490);
+  drawWindowCity(100, 385, 80, 50);
+  drawWindowCity(660, 385, 80, 50);
+
+  // ── Desks ──
+  // R&D
+  [[20,55],[76,55],[132,55],[20,115],[76,115],[132,115]].forEach(([dx,dy],i) => {
+    drawDesk(dx,dy,'#4fa3ff',true,['coffee','notebook','plant','coffee','notebook','plant'][i]);
+  });
+  // AI Core
+  [[248,55],[300,55],[348,55],[248,115],[300,115]].forEach(([dx,dy],i) => {
+    drawDesk(dx,dy,'#aa66ff',true,['coffee','notebook','coffee','plant','coffee'][i]);
+  });
+  // Infra
+  [[443,55],[495,55],[443,115],[495,115]].forEach(([dx,dy],i) => {
+    drawDesk(dx,dy,'#00cc88',true,['coffee','coffee','notebook','plant'][i]);
+  });
+  // OPS
+  [[630,55],[682,55],[630,115],[682,115],[734,115]].forEach(([dx,dy],i) => {
+    drawDesk(dx,dy,'#ff8c00',true,['coffee','notebook','coffee','plant','coffee'][i]);
+  });
+  // Design
+  [[20,225],[72,225],[124,225],[176,225],[20,295],[72,295],[124,295]].forEach(([dx,dy],i) => {
+    drawDesk(dx,dy,'#ffee44',true,['plant','coffee','notebook','coffee','notebook','plant','coffee'][i]);
+  });
+  // Legal
+  [[400,230],[452,230],[504,230],[400,295],[452,295]].forEach(([dx,dy],i) => {
+    drawDesk(dx,dy,'#ff4466',true,['coffee','notebook','coffee','plant','coffee'][i]);
+  });
+  // Robotics
+  [[624,230],[676,230],[624,300]].forEach(([dx,dy],i) => {
+    drawDesk(dx,dy,'#00ffcc',true,['coffee','notebook','plant'][i]);
+  });
+
+  // ── Characters ──
+  actors.forEach((a, i) => {
+    drawChar(a.x, a.y, a.color);
+  });
+
+  // ── Dialog bubbles ──
+  actors.forEach((a, i) => {
+    drawBubble(a.x, a.y, a.name, a.dialog, a.state, a.stateColor, i);
+  });
+
+  drawScanlines();
+  frame++;
+  requestAnimationFrame(render);
+}
+
+render();
+</script>
+</body>
+</html>
