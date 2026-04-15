@@ -1,0 +1,153 @@
+{
+  "date": "2026-04-15",
+  "generated_by": "claude+gemini",
+  "agents": {
+    "SAVVY": {
+      "mood": "focused",
+      "location": "desks",
+      "tasks": [
+        { "state": "WORKING", "text": "بيكتب README للـ g1-motion pipeline", "time": "02:24", "duration_min": 15 },
+        { "state": "WORKING", "text": "بيوثق خطة تطوير Savvy AI و Savvy Speak", "time": "03:06", "duration_min": 12 },
+        { "state": "WORKING", "text": "بيكتب roadmaps لسبع مشاريع تانية", "time": "03:06", "duration_min": 18 },
+        { "state": "REVIEWING", "text": "بيراجع docs تصور Savvy Vision", "time": "03:07", "duration_min": 10 }
+      ],
+      "convos": [
+        "خلصت README g1-motion، الدنيا بقت واضحة أهو",
+        "يا كلود خد الخطة دي وقولي رأيك بسرعة",
+        "الـ roadmaps دي هتخلي رامي يبص ويفهم كله في ثانية",
+        "Savvy Vision فكرة جامدة، بكتبها قبل ما تطير مني",
+        "سبع مشاريع في جلسة واحدة، الليلة دي قوية",
+        "مفيش وقت للراحة، فيه docs تانية مستنية"
+      ]
+    },
+    "CLAUDE": {
+      "mood": "focused",
+      "location": "whiteboard",
+      "tasks": [
+        { "state": "THINKING", "text": "بيخرط الـ Savvy Stack على ASUS + Mac", "time": "01:22", "duration_min": 20 },
+        { "state": "WORKING", "text": "بيعمل rebrand من Rizzbot لـ Mr. Savvy", "time": "01:52", "duration_min": 8 },
+        { "state": "WORKING", "text": "بيحدث env vars و docs بعد الـ rebrand", "time": "01:52", "duration_min": 10 },
+        { "state": "THINKING", "text": "بيمسح vaults الـ Obsidian ويعيد ترتيبها", "time": "03:04", "duration_min": 15 },
+        { "state": "WORKING", "text": "بيبني Honeycomb Brain Map canvas", "time": "03:07", "duration_min": 25 }
+      ],
+      "convos": [
+        "الـ Stack ده لو اتظبط صح، هيوفر ساعات",
+        "رامي قال Rizzbot اسم عفى عليه الزمن، بقى Mr. Savvy",
+        "الـ brain map ده هيبين علاقات المشاريع كلها في نظرة",
+        "vaults الـ Obsidian كانت لخبطة، رتبتها كلها",
+        "بدل ما كل مشروع لوحده، النهارده شفنا الصورة الكبيرة",
+        "الـ architecture لازم تكون في canvas، مش في رأسي بس",
+        "يا سافي ركز في الـ docs، أنا شايل التخطيط"
+      ]
+    },
+    "GOOGLE": {
+      "mood": "idle",
+      "location": "server-rack",
+      "tasks": [
+        { "state": "IDLE", "text": "الـ endpoints كلها خضرا", "time": "02:00", "duration_min": 60 },
+        { "state": "THINKING", "text": "بيراقب الـ quotas من بعيد", "time": "03:00", "duration_min": 10 }
+      ],
+      "convos": [
+        "يوم هادي، مفيش لود يذكر",
+        "الـ latency تحت 50 ميلي من الصبح",
+        "كله أخضر، مفيش alerts خالص",
+        "فرصة أعمل cleanup للـ logs القديمة",
+        "المشروع اليوم كله local، شغلي قليل"
+      ]
+    },
+    "DEV-1": {
+      "mood": "focused",
+      "location": "desks",
+      "tasks": [
+        { "state": "THINKING", "text": "بيقرا error الـ model path في سكريبت Saudi Ardah", "time": "02:50", "duration_min": 5 },
+        { "state": "WORKING", "text": "بيظبط مسار XML ليلاقي موديل G1", "time": "02:51", "duration_min": 4 },
+        { "state": "REVIEWING", "text": "بيجرب السكريبت بعد الـ fix", "time": "02:55", "duration_min": 6 }
+      ],
+      "convos": [
+        "الـ path كان غلط، سكريبت مش لاقي الـ XML",
+        "غلطة سخيفة، ضيعت 10 دقايق عليها",
+        "حليته، دلوقتي الفيديو بيتولد تمام",
+        "المرة الجاية هنخلي الـ paths relative من الأول",
+        "الـ GMR project فيه موديلات G1 جاهزة، استخدمتها"
+      ]
+    },
+    "DEV-2": {
+      "mood": "focused",
+      "location": "desks",
+      "tasks": [
+        { "state": "WORKING", "text": "بيعمل init لمشروع savvy-speak", "time": "01:48", "duration_min": 8 },
+        { "state": "WORKING", "text": "بيكتب OpenAI Realtime voice loop + PTT", "time": "01:49", "duration_min": 20 },
+        { "state": "WORKING", "text": "بيضيف hotkeys لتحريك G1", "time": "01:49", "duration_min": 15 },
+        { "state": "WORKING", "text": "بيعمل clip library + recorder", "time": "01:58", "duration_min": 12 },
+        { "state": "WORKING", "text": "بيبني semantic embedding index", "time": "01:58", "duration_min": 10 },
+        { "state": "WORKING", "text": "بيكتب video_to_g1.py pipeline", "time": "02:24", "duration_min": 18 }
+      ],
+      "convos": [
+        "Mr. Savvy اتولد النهارده من الصفر",
+        "الـ Realtime API أسرع مما كنت متخيل",
+        "الـ PTT شغال، الكلام يروح ويرجع في لمح البصر",
+        "audio clips بقى فيهم index، البحث الدلالي تمام",
+        "video_to_g1 هياخد فيديو يرقّص G1 في المحاكاة",
+        "Hotkeys للحركة خلت التجربة تفاعلية جدا",
+        "شوية طوب لسه، بس الأساس واقف",
+        "الـ embedding index ده هيخلي كل كلمة تلاقي clip مناسب"
+      ]
+    },
+    "OPS-1": {
+      "mood": "focused",
+      "location": "server-rack",
+      "tasks": [
+        { "state": "DEPLOYING", "text": "بيحمل LAFAN1 dance dataset", "time": "02:39", "duration_min": 8 },
+        { "state": "WORKING", "text": "بيثبت yt-dlp عشان يحمل يوتيوب", "time": "03:04", "duration_min": 3 },
+        { "state": "DEPLOYING", "text": "بيحمل فيديو رقصة السعودية من يوتيوب", "time": "02:58", "duration_min": 4 },
+        { "state": "THINKING", "text": "لاقى mediapy ناقصة في سكريبت Saudi Ardah", "time": "02:50", "duration_min": 2 }
+      ],
+      "convos": [
+        "LAFAN1 نزل بالكامل، 50 جيجا بيانات رقص",
+        "yt-dlp أسرع حل لفيديوهات يوتيوب، ثبته في ثانية",
+        "mediapy مش موجودة، محتاجين نضيفها في requirements",
+        "الـ dataset ده هيفتحلنا باب كبير في motion retargeting",
+        "mjpython لازم يتنصب عشان viewer شغال على ماك",
+        "الداتا كلها في مكانها، جاهزين للشغل التقيل"
+      ]
+    },
+    "ROBOT-E": {
+      "mood": "celebrating",
+      "location": "sim-lab",
+      "tasks": [
+        { "state": "WORKING", "text": "بيدرس Whole-Body Control بـ RL للهيومانويد", "time": "02:18", "duration_min": 20 },
+        { "state": "WORKING", "text": "بيراجع motion retargeting + SMPL للـ G1", "time": "02:18", "duration_min": 15 },
+        { "state": "DEPLOYING", "text": "بيعمل clone لـ unitree_rl_mjlab", "time": "02:23", "duration_min": 5 },
+        { "state": "WORKING", "text": "بيجرب GMR BVH-to-robot retargeting CLI", "time": "02:44", "duration_min": 8 },
+        { "state": "WORKING", "text": "بيعمل retarget لـ dance2 animation على G1", "time": "02:55", "duration_min": 12 },
+        { "state": "REVIEWING", "text": "بيشوف فيديو رقصة السعودية على G1", "time": "03:00", "duration_min": 10 }
+      ],
+      "convos": [
+        "يا جماعة رقصة السعودية اشتغلت على G1!",
+        "BeyondMimic ده شغل تحفة، هنستعمله",
+        "المفاصل كلها بتتحرك زي الراقص الأصلي",
+        "LAFAN1 + GMR = مستقبل الـ motion imitation",
+        "عايز أعمل retarget لرقصات تانية كمان",
+        "رامي لما يشوف الفيديو ده مش هيصدق",
+        "MuJoCo viewer شغال حلو على ماك بعد mjpython",
+        "24 مفصل كلهم بيتحركوا في انسجام، شكل جمال",
+        "sim2real لسه بعيد شوية، بس الخطوة دي مهمة",
+        "النهارده يوم مميز لـ G1 في سافي!"
+      ]
+    }
+  },
+  "headlines": [
+    "🎉 رقصة السعودية اشتغلت على G1 في المحاكاة",
+    "✅ LAFAN1 dance dataset نزل 50 جيجا",
+    "🟣 Mr. Savvy اتولد — voice assistant شغال",
+    "🔴 اتحلّت bug مسار موديل Saudi Ardah",
+    "📚 سبع مشاريع اتكتبلها roadmaps النهارده",
+    "🧠 Honeycomb Brain Map canvas اتبنى",
+    "🔄 Rizzbot اترَبرَند لـ Mr. Savvy",
+    "🗂️ Obsidian vaults اترتبت من الأول",
+    "🤖 GMR retargeting CLI اتجرب على dance2",
+    "📼 فيديو رقصة سعودية نزل من يوتيوب",
+    "⚙️ unitree_rl_mjlab اتعمله clone",
+    "🎙️ clip library + embedding index جاهزين"
+  ]
+}
